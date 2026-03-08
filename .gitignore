@@ -48,3 +48,4 @@ admin.html
 admin-supabase.html
 admin_files/
 ~$*.docx
+.vercel
