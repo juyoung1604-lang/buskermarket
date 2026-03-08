@@ -9,8 +9,11 @@ import { motion } from 'framer-motion';
 const NewsletterPage = () => {
   const { toast } = useToast();
   const [emails, setEmails] = useState<any[]>([]);
+  const [templates, setTemplates] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [showTemplateForm, setShowTemplateForm] = useState(false);
+  const [templateTitle, setTemplateTitle] = useState('');
   
   // Gmail Settings
   const [gmailConfig, setGmailConfig] = useState({
@@ -27,6 +30,7 @@ const NewsletterPage = () => {
 
   useEffect(() => {
     fetchEmails();
+    fetchTemplates();
     const savedConfig = localStorage.getItem('songdo_gmail_config');
     if (savedConfig) {
       setGmailConfig(JSON.parse(savedConfig));
@@ -38,6 +42,11 @@ const NewsletterPage = () => {
     const data = await DB.getNewsletters();
     setEmails(data || []);
     setLoading(false);
+  };
+
+  const fetchTemplates = async () => {
+    const data = await DB.getNewsletterTemplates();
+    setTemplates(data || []);
   };
 
   const handleGmailConnect = (e: React.FormEvent) => {
@@ -58,6 +67,51 @@ const NewsletterPage = () => {
     setGmailConfig(newConfig);
     localStorage.removeItem('songdo_gmail_config');
     toast('연동이 해제되었습니다.', 'sky');
+  };
+
+  const handleSaveTemplate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!templateTitle) {
+      toast('템플릿 이름을 입력해주세요.', 'rose');
+      return;
+    }
+    if (!compose.subject || !compose.content) {
+      toast('저장할 제목과 내용이 없습니다.', 'rose');
+      return;
+    }
+
+    const { error } = await DB.createNewsletterTemplate({
+      title: templateTitle,
+      subject: compose.subject,
+      content: compose.content
+    });
+
+    if (!error) {
+      toast('템플릿이 저장되었습니다.', 'jade');
+      setTemplateTitle('');
+      setShowTemplateForm(false);
+      fetchTemplates();
+    }
+  };
+
+  const handleLoadTemplate = (temp: any) => {
+    if (compose.subject || compose.content) {
+      if (!confirm('현재 작성 중인 내용이 사라집니다. 불러오시겠습니까?')) return;
+    }
+    setCompose({
+      subject: temp.subject,
+      content: temp.content
+    });
+    toast(`'${temp.title}' 템플릿을 불러왔습니다.`, 'jade');
+  };
+
+  const handleDeleteTemplate = async (id: string) => {
+    if (!confirm('템플릿을 삭제하시겠습니까?')) return;
+    const { error } = await DB.deleteNewsletterTemplate(id);
+    if (!error) {
+      toast('삭제되었습니다.', 'sky');
+      fetchTemplates();
+    }
   };
 
   const handleDelete = async (id: string) => {
@@ -85,21 +139,40 @@ const NewsletterPage = () => {
 
     setSending(true);
     
-    // Simulate API call for sending emails
-    // In a real production app, this would call a backend endpoint that uses nodemailer or Gmail API
-    setTimeout(() => {
-      setSending(false);
-      toast(`${emails.length}명의 구독자에게 뉴스레터 발송이 완료되었습니다.`, 'jade');
-      setCompose({ subject: '', content: '' });
-      
-      // Log this activity
-      DB.createAdminLog({
-        type: 'paper-plane',
-        color: 'var(--jade)',
-        title: '뉴스레터 발송 완료',
-        desc: `${compose.subject} (${emails.length}명)`
+    try {
+      const response = await fetch('/api/send-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          gmailUser: gmailConfig.email,
+          gmailPass: gmailConfig.appPassword,
+          recipients: emails.map(e => e.email),
+          subject: compose.subject,
+          content: compose.content
+        }),
       });
-    }, 2000);
+
+      const result = await response.json();
+
+      if (result.success) {
+        toast(`${emails.length}명의 구독자에게 뉴스레터 발송이 완료되었습니다.`, 'jade');
+        setCompose({ subject: '', content: '' });
+        
+        // Log this activity
+        DB.createAdminLog({
+          type: 'paper-plane',
+          color: 'var(--jade)',
+          title: '뉴스레터 발송 완료',
+          desc: `${compose.subject} (${emails.length}명)`
+        });
+      } else {
+        throw new Error(result.error || '메일 발송 실패');
+      }
+    } catch (err: any) {
+      toast('메일 발송 중 오류: ' + err.message, 'rose');
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
@@ -155,6 +228,62 @@ const NewsletterPage = () => {
                   </button>
                 </div>
               )}
+            </div>
+          </div>
+
+          {/* Template Storage Card */}
+          <div className="card">
+            <div className="card-h">
+              <span className="card-title">뉴스레터 템플릿</span>
+              <button 
+                onClick={() => setShowTemplateForm(!showTemplateForm)} 
+                className="btn btn-ghost" 
+                style={{ fontSize: '.7rem', color: 'var(--jade)' }}
+              >
+                {showTemplateForm ? '취소' : '+ 새 템플릿'}
+              </button>
+            </div>
+            <div className="card-body">
+              {showTemplateForm && (
+                <form onSubmit={handleSaveTemplate} className="mb-4 p-3 bg-gray-50 rounded-xl border border-gray-100 space-y-3">
+                  <div className="fg">
+                    <label style={{ fontSize: '.7rem' }}>템플릿 명칭</label>
+                    <input 
+                      className="fi" 
+                      style={{ padding: '8px 12px', fontSize: '.8rem' }}
+                      placeholder="예: 3월 행사 안내" 
+                      value={templateTitle}
+                      onChange={(e) => setTemplateTitle(e.target.value)}
+                    />
+                  </div>
+                  <button type="submit" className="btn btn-jade" style={{ width: '100%', fontSize: '.75rem', padding: '8px' }}>
+                    현재 작성 내용 저장
+                  </button>
+                </form>
+              )}
+
+              <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                {templates.length === 0 ? (
+                  <p className="text-center text-muted py-4" style={{ fontSize: '.8rem' }}>저장된 템플릿이 없습니다.</p>
+                ) : templates.map(t => (
+                  <div 
+                    key={t.id} 
+                    className="group p-3 border border-gray-100 rounded-xl hover:border-jade/30 hover:bg-jade/5 transition-all cursor-pointer flex items-center justify-between"
+                    onClick={() => handleLoadTemplate(t)}
+                  >
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: '.85rem' }}>{t.title}</div>
+                      <div style={{ fontSize: '.65rem', color: 'var(--muted)', marginTop: '2px' }}>{t.subject.slice(0, 20)}...</div>
+                    </div>
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); handleDeleteTemplate(t.id); }}
+                      className="opacity-0 group-hover:opacity-100 p-2 text-rose hover:bg-rose/10 rounded-lg transition-all"
+                    >
+                      <i className="fa-solid fa-trash-can" style={{ fontSize: '.75rem' }}></i>
+                    </button>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
 
@@ -229,7 +358,7 @@ const NewsletterPage = () => {
             
             <div style={{ padding: '14px', background: 'var(--ink3)', borderRadius: '12px', border: '1px dashed var(--line)' }}>
               <div style={{ fontSize: '.75rem', fontWeight: 700, color: 'var(--head)', marginBottom: '4px' }}>발송 정보 확인</div>
-              <ul style={{ fontSize: '.7rem', color: 'var(--muted)', listStyle: 'disc', paddingLeft: '16px', spaceY: '4px' }}>
+              <ul style={{ fontSize: '.7rem', color: 'var(--muted)', listStyle: 'disc', paddingLeft: '16px' }}>
                 <li>총 {emails.length}명의 구독자에게 발송됩니다.</li>
                 <li>Gmail 서버를 통해 안전하게 개별 발송 처리됩니다.</li>
                 <li>발송 후 관리자 로그에 기록이 남습니다.</li>

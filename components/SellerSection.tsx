@@ -40,7 +40,7 @@ export default function SellerSection() {
   };
 
   return (
-    <section id="seller" className="grid md:grid-cols-2 md:h-screen">
+    <section id="seller" className="relative grid md:grid-cols-2 md:min-h-screen">
       <AnimateOnScroll direction="left" className="flex items-center justify-center py-14 px-6 sm:px-8 md:py-24 md:px-12" style={{ backgroundColor: "#F0F4EF" }}>
         <div className="text-center max-w-md w-full">
           <div className="w-14 h-14 sm:w-20 sm:h-20 mx-auto mb-5 sm:mb-8 flex items-center justify-center">
@@ -88,11 +88,11 @@ export default function SellerSection() {
         </div>
       </AnimateOnScroll>
 
-      <AnimateOnScroll direction="right" className="grid grid-cols-2 grid-rows-2 gap-3 p-3 bg-white md:h-full">
+      <AnimateOnScroll direction="right" className="grid grid-cols-2 grid-rows-2 gap-3 p-3 bg-white">
         {images.map((url, idx) => (
           <div
             key={idx}
-            className="relative rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-shadow cursor-pointer"
+            className="relative rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-shadow cursor-pointer aspect-square"
           >
             <img
               alt={`플리마켓 이미지 ${idx + 1}`}

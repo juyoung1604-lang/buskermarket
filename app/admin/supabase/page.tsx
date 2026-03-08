@@ -129,6 +129,8 @@ create table if not exists buskers (
   genre text not null,
   phone text,
   email text,
+  birth_date date,
+  organization text,
   event_date date,
   status text not null default 'pending' check (status in ('pending', 'approved', 'rejected', 'refunded')),
   fee integer not null default 50000,
@@ -139,19 +141,6 @@ create table if not exists buskers (
   updated_at timestamptz not null default now()
 );
 
-alter table buskers add column if not exists team text;
-alter table buskers add column if not exists genre text;
-alter table buskers add column if not exists phone text;
-alter table buskers add column if not exists email text;
-alter table buskers add column if not exists event_date date;
-alter table buskers add column if not exists status text default 'pending';
-alter table buskers add column if not exists fee integer default 50000;
-alter table buskers add column if not exists payment_method text default '계좌이체';
-alter table buskers add column if not exists note text;
-alter table buskers add column if not exists rejection_reason text;
-alter table buskers add column if not exists applied_at timestamptz default now();
-alter table buskers add column if not exists updated_at timestamptz default now();
-
 -- 2. 셀러 신청
 create table if not exists sellers (
   id uuid primary key default gen_random_uuid(),
@@ -161,6 +150,8 @@ create table if not exists sellers (
   fee integer not null default 30000,
   phone text,
   email text,
+  birth_date date,
+  organization text,
   event_date date,
   status text not null default 'pending' check (status in ('pending', 'approved', 'rejected', 'paid', 'refunded')),
   payment_method text default '계좌이체',
@@ -170,19 +161,6 @@ create table if not exists sellers (
   updated_at timestamptz not null default now()
 );
 
-alter table sellers add column if not exists category text;
-alter table sellers add column if not exists booths integer default 1;
-alter table sellers add column if not exists fee integer default 30000;
-alter table sellers add column if not exists phone text;
-alter table sellers add column if not exists email text;
-alter table sellers add column if not exists event_date date;
-alter table sellers add column if not exists status text default 'pending';
-alter table sellers add column if not exists payment_method text default '계좌이체';
-alter table sellers add column if not exists note text;
-alter table sellers add column if not exists rejection_reason text;
-alter table sellers add column if not exists applied_at timestamptz default now();
-alter table sellers add column if not exists updated_at timestamptz default now();
-
 -- 3. 통합 인력 풀
 create table if not exists busker_pool (
   id text primary key,
@@ -191,6 +169,8 @@ create table if not exists busker_pool (
   genre text,
   phone text,
   email text,
+  birth_date date,
+  organization text,
   app_count integer not null default 1,
   note text,
   created_at timestamptz not null default now(),
@@ -203,62 +183,13 @@ create table if not exists seller_pool (
   category text,
   phone text,
   email text,
+  birth_date date,
+  organization text,
   app_count integer not null default 1,
   note text,
   created_at timestamptz not null default now(),
   last_applied_at timestamptz not null default now()
 );
-
--- 4. 행사 캘린더
-create table if not exists events (
-  id uuid primary key default gen_random_uuid(),
-  title text not null,
-  event_date date not null,
-  busker_count integer not null default 0,
-  seller_count integer not null default 0,
-  note text,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
-);
-
-alter table events add column if not exists updated_at timestamptz default now();
-
--- 5. 홈페이지 팝업
-create table if not exists homepage_popups (
-  id uuid primary key default gen_random_uuid(),
-  title text not null,
-  image_url text not null,
-  content text,
-  link_url text,
-  button_label text default '자세히 보기',
-  start_date date,
-  end_date date,
-  popup_size text default 'md' check (popup_size in ('sm', 'md', 'lg')),
-  popup_width_px integer,
-  popup_height_px integer,
-  is_active boolean not null default true,
-  open_in_new_tab boolean not null default false,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
-);
-
--- 6. 매출/정산 (선택 사용)
-create table if not exists revenue (
-  id uuid primary key default gen_random_uuid(),
-  date date not null,
-  type text,
-  name text,
-  item text,
-  amount integer not null default 0,
-  method text,
-  status text not null default 'unpaid' check (status in ('paid', 'unpaid', 'refunded')),
-  note text,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
-);
-
-alter table revenue add column if not exists created_at timestamptz default now();
-alter table revenue add column if not exists updated_at timestamptz default now();
 
 -- 7. 이미지 관리
 create table if not exists images (
@@ -267,13 +198,38 @@ create table if not exists images (
   url text not null,
   alt text,
   caption text,
+  "colSpan" text,
+  "rowSpan" text,
+  "minHeight" text,
   active boolean not null default true,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
 
-alter table images add column if not exists caption text;
-alter table images add column if not exists updated_at timestamptz default now();
+-- 9. 뉴스레터
+create table if not exists newsletter (
+  id uuid primary key default gen_random_uuid(),
+  email text not null unique,
+  created_at timestamptz not null default now()
+);
+
+-- 10. 뉴스레터 템플릿
+create table if not exists newsletter_templates (
+  id uuid primary key default gen_random_uuid(),
+  title text not null,
+  subject text not null,
+  content text not null,
+  created_at timestamptz not null default now()
+);
+
+-- 11. 자주 묻는 질문 (FAQ)
+create table if not exists faqs (
+  id uuid primary key default gen_random_uuid(),
+  question text not null,
+  answer text not null,
+  order_seq integer not null default 0,
+  created_at timestamptz not null default now()
+);
 
 -- 8. 관리자 로그
 create table if not exists admin_logs (

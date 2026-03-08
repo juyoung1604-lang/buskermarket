@@ -289,7 +289,7 @@ export default function ContactSection() {
               </h4>
               <div className="text-xs text-gray-500 space-y-2 mb-6 bg-white p-4 rounded-xl border border-gray-100 max-h-40 overflow-y-auto">
                 <p className="font-bold text-gray-700">[수집·이용 및 제공 목적]</p>
-                <p>공연 일정 등 운영 전반에 관한 관리를 위한 신청자 식별</p>
+                <p>공연 및 플리마켓 일정 등 운영 전반에 관한 관리를 위한 신청자 식별</p>
                 <p className="font-bold text-gray-700 mt-2">[수집하는 항목]</p>
                 <p>성명, 생년월일, 연락처, 이메일, 소속</p>
                 <p className="font-bold text-gray-700 mt-2">[보유 이용기간]</p>

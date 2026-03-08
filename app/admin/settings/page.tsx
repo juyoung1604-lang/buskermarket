@@ -54,9 +54,25 @@ const SettingsPage = () => {
     }
   };
 
-  const handleResetImage = async (id: string, defaultUrl: string, section: string, alt: string, defaultCaption?: string) => {
+  const handleUpdateLayout = async (id: string, layout: any, section: string, alt: string) => {
+    const current = images.find(img => img.id === id) || {};
+    const { error } = await DB.updateImage(id, { ...current, ...layout, section, alt });
+    if (!error) {
+      toast('레이아웃이 업데이트되었습니다.', 'jade');
+      loadImages();
+    } else {
+      toast('업데이트 실패: ' + error.message, 'rose');
+    }
+  };
+
+  const handleResetImage = async (id: string, defaultUrl: string, section: string, alt: string, defaultCaption?: string, defaultLayout?: any) => {
     const payload: any = { url: defaultUrl, section, alt, active: true };
     if (defaultCaption !== undefined) payload.caption = defaultCaption;
+    if (defaultLayout !== undefined) {
+      payload.colSpan = defaultLayout.colSpan;
+      payload.rowSpan = defaultLayout.rowSpan;
+      payload.minHeight = defaultLayout.minHeight;
+    }
     const { error } = await DB.updateImage(id, payload);
     if (!error) {
       toast('기본값으로 복원되었습니다.', 'jade');
@@ -130,12 +146,12 @@ const SettingsPage = () => {
         { id: 'img-seller-2', label: '셀러 갤러리 2', section: 'seller', default: SELLER_IMAGES[1].url },
         { id: 'img-seller-3', label: '셀러 갤러리 3', section: 'seller', default: SELLER_IMAGES[2].url },
         { id: 'img-seller-4', label: '셀러 갤러리 4', section: 'seller', default: SELLER_IMAGES[3].url },
-        { id: 'img-gallery-1', label: 'Weekend Vibes 1', section: 'gallery', default: GALLERY_ITEMS[0].url, defaultCaption: GALLERY_ITEMS[0].caption },
-        { id: 'img-gallery-2', label: 'Weekend Vibes 2', section: 'gallery', default: GALLERY_ITEMS[1].url, defaultCaption: GALLERY_ITEMS[1].caption },
-        { id: 'img-gallery-3', label: 'Weekend Vibes 3', section: 'gallery', default: GALLERY_ITEMS[2].url, defaultCaption: GALLERY_ITEMS[2].caption },
-        { id: 'img-gallery-4', label: 'Weekend Vibes 4', section: 'gallery', default: GALLERY_ITEMS[3].url, defaultCaption: GALLERY_ITEMS[3].caption },
-        { id: 'img-gallery-5', label: 'Weekend Vibes 5', section: 'gallery', default: GALLERY_ITEMS[4].url, defaultCaption: GALLERY_ITEMS[4].caption },
-        { id: 'img-gallery-6', label: 'Weekend Vibes 6', section: 'gallery', default: GALLERY_ITEMS[5].url, defaultCaption: GALLERY_ITEMS[5].caption },
+        { id: 'img-gallery-1', label: 'Weekend Vibes 1', section: 'gallery', default: GALLERY_ITEMS[0].url, defaultCaption: GALLERY_ITEMS[0].caption, defaultLayout: { colSpan: GALLERY_ITEMS[0].colSpan, rowSpan: GALLERY_ITEMS[0].rowSpan, minHeight: GALLERY_ITEMS[0].minHeight } },
+        { id: 'img-gallery-2', label: 'Weekend Vibes 2', section: 'gallery', default: GALLERY_ITEMS[1].url, defaultCaption: GALLERY_ITEMS[1].caption, defaultLayout: { colSpan: GALLERY_ITEMS[1].colSpan, rowSpan: GALLERY_ITEMS[1].rowSpan, minHeight: GALLERY_ITEMS[1].minHeight } },
+        { id: 'img-gallery-3', label: 'Weekend Vibes 3', section: 'gallery', default: GALLERY_ITEMS[2].url, defaultCaption: GALLERY_ITEMS[2].caption, defaultLayout: { colSpan: GALLERY_ITEMS[2].colSpan, rowSpan: GALLERY_ITEMS[2].rowSpan, minHeight: GALLERY_ITEMS[2].minHeight } },
+        { id: 'img-gallery-4', label: 'Weekend Vibes 4', section: 'gallery', default: GALLERY_ITEMS[3].url, defaultCaption: GALLERY_ITEMS[3].caption, defaultLayout: { colSpan: GALLERY_ITEMS[3].colSpan, rowSpan: GALLERY_ITEMS[3].rowSpan, minHeight: GALLERY_ITEMS[3].minHeight } },
+        { id: 'img-gallery-5', label: 'Weekend Vibes 5', section: 'gallery', default: GALLERY_ITEMS[4].url, defaultCaption: GALLERY_ITEMS[4].caption, defaultLayout: { colSpan: GALLERY_ITEMS[4].colSpan, rowSpan: GALLERY_ITEMS[4].rowSpan, minHeight: GALLERY_ITEMS[4].minHeight } },
+        { id: 'img-gallery-6', label: 'Weekend Vibes 6', section: 'gallery', default: GALLERY_ITEMS[5].url, defaultCaption: GALLERY_ITEMS[5].caption, defaultLayout: { colSpan: GALLERY_ITEMS[5].colSpan, rowSpan: GALLERY_ITEMS[5].rowSpan, minHeight: GALLERY_ITEMS[5].minHeight } },
       ],
     },
     {
@@ -227,19 +243,46 @@ const SettingsPage = () => {
                               }}
                             />
                             {isGallery && (
-                              <input
-                                className="fi"
-                                placeholder="이미지 위에 표시될 텍스트 (캡션)"
-                                defaultValue={current?.caption || item.defaultCaption || ''}
-                                onBlur={(e) => {
-                                  if (e.target.value !== (current?.caption ?? item.defaultCaption)) {
-                                    handleUpdateCaption(item.id, e.target.value, item.section, item.label);
-                                  }
-                                }}
-                              />
+                              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px', marginTop: '4px' }}>
+                                <div className="fg">
+                                  <label style={{ fontSize: '10px' }}>너비 (칸)</label>
+                                  <select 
+                                    className="fs" 
+                                    style={{ padding: '4px 8px', fontSize: '11px' }}
+                                    value={current?.colSpan || item.defaultLayout?.colSpan}
+                                    onChange={(e) => handleUpdateLayout(item.id, { colSpan: e.target.value }, item.section, item.label)}
+                                  >
+                                    <option value="col-span-1">1칸</option>
+                                    <option value="col-span-1 md:col-span-2">2칸 (권장)</option>
+                                    <option value="col-span-1 md:col-span-3">3칸 (전체)</option>
+                                  </select>
+                                </div>
+                                <div className="fg">
+                                  <label style={{ fontSize: '10px' }}>높이 (줄)</label>
+                                  <select 
+                                    className="fs" 
+                                    style={{ padding: '4px 8px', fontSize: '11px' }}
+                                    value={current?.rowSpan || item.defaultLayout?.rowSpan}
+                                    onChange={(e) => handleUpdateLayout(item.id, { rowSpan: e.target.value }, item.section, item.label)}
+                                  >
+                                    <option value="row-span-1">1줄</option>
+                                    <option value="md:row-span-2">2줄 (세로형)</option>
+                                  </select>
+                                </div>
+                                <div className="fg">
+                                  <label style={{ fontSize: '10px' }}>최소 높이</label>
+                                  <input 
+                                    className="fi" 
+                                    style={{ padding: '4px 8px', fontSize: '11px' }}
+                                    placeholder="220px"
+                                    defaultValue={current?.minHeight || item.defaultLayout?.minHeight}
+                                    onBlur={(e) => handleUpdateLayout(item.id, { minHeight: e.target.value }, item.section, item.label)}
+                                  />
+                                </div>
+                              </div>
                             )}
                           </div>
-                          <button className="btn" onClick={() => handleResetImage(item.id, item.default, item.section, item.label, item.defaultCaption)} title="기본값으로 복원" style={{ flexShrink: 0 }}>
+                          <button className="btn" onClick={() => handleResetImage(item.id, item.default, item.section, item.label, item.defaultCaption, item.defaultLayout)} title="기본값으로 복원" style={{ flexShrink: 0 }}>
                             <i className="ri-restart-line"></i>
                           </button>
                         </div>

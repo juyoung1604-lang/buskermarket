@@ -43,12 +43,12 @@ const MOCK_DATA = {
     { id: 'img-seller-2', section: 'seller', url: 'https://picsum.photos/seed/seller-goods/500/500', alt: '셀러 이미지 2', active: true },
     { id: 'img-seller-3', section: 'seller', url: 'https://picsum.photos/seed/seller-food/500/500', alt: '셀러 이미지 3', active: true },
     { id: 'img-seller-4', section: 'seller', url: 'https://picsum.photos/seed/seller-camping/500/500', alt: '셀러 이미지 4', active: true },
-    { id: 'img-gallery-1', section: 'gallery', url: 'https://picsum.photos/seed/gallery-family/800/600', alt: '갤러리 1', caption: '가족과 함께하는 주말', active: true },
-    { id: 'img-gallery-2', section: 'gallery', url: 'https://picsum.photos/seed/gallery-concert/600/800', alt: '갤러리 2', caption: '라이브 공연의 열기', active: true },
-    { id: 'img-gallery-3', section: 'gallery', url: 'https://picsum.photos/seed/gallery-craft/600/600', alt: '갤러리 3', caption: '특별한 수제 제품들', active: true },
-    { id: 'img-gallery-4', section: 'gallery', url: 'https://picsum.photos/seed/gallery-market/800/600', alt: '갤러리 4', caption: '마켓에서의 만남', active: true },
-    { id: 'img-gallery-5', section: 'gallery', url: 'https://picsum.photos/seed/gallery-busking/600/800', alt: '갤러리 5', caption: '감성적인 버스킹', active: true },
-    { id: 'img-gallery-6', section: 'gallery', url: 'https://picsum.photos/seed/gallery-camping/800/600', alt: '갤러리 6', caption: '송도 캠핑장 전경', active: true }
+    { id: 'img-gallery-1', section: 'gallery', url: 'https://picsum.photos/seed/gallery-family/800/600', alt: '갤러리 1', caption: '가족과 함께하는 주말', colSpan: 'col-span-1 md:col-span-2', rowSpan: 'row-span-1', minHeight: '220px', active: true },
+    { id: 'img-gallery-2', section: 'gallery', url: 'https://picsum.photos/seed/gallery-concert/600/800', alt: '갤러리 2', caption: '라이브 공연의 열기', colSpan: 'col-span-1', rowSpan: 'md:row-span-2', minHeight: '220px', active: true },
+    { id: 'img-gallery-3', section: 'gallery', url: 'https://picsum.photos/seed/gallery-craft/600/600', alt: '갤러리 3', caption: '특별한 수제 제품들', colSpan: 'col-span-1', rowSpan: 'row-span-1', minHeight: '220px', active: true },
+    { id: 'img-gallery-4', section: 'gallery', url: 'https://picsum.photos/seed/gallery-market/800/600', alt: '갤러리 4', caption: '마켓에서의 만남', colSpan: 'col-span-1 md:col-span-2', rowSpan: 'row-span-1', minHeight: '220px', active: true },
+    { id: 'img-gallery-5', section: 'gallery', url: 'https://picsum.photos/seed/gallery-busking/600/800', alt: '갤러리 5', caption: '감성적인 버스킹', colSpan: 'col-span-1', rowSpan: 'md:row-span-2', minHeight: '220px', active: true },
+    { id: 'img-gallery-6', section: 'gallery', url: 'https://picsum.photos/seed/gallery-camping/800/600', alt: '갤러리 6', caption: '송도 캠핑장 전경', colSpan: 'col-span-1 md:col-span-2', rowSpan: 'row-span-1', minHeight: '220px', active: true }
   ],
   buskers: [
     { id: 'b1', name: '이지은', team: '솔로', genre: '어쿠스틱', phone: '010-1234-5678', email: 'jieun@example.com', birth_date: '1995-05-10', organization: '프리랜서', event_date: '2026-03-07', status: 'approved', fee: 50000, applied_at: '2026-02-20T10:00:00Z', note: '[문의] 통기타 연주 및 보컬' },
@@ -104,6 +104,10 @@ const MOCK_DATA = {
     { id: 'f4', question: '신청 후 취소가 가능한가요?', answer: '네, 행사 3일 전까지는 취소가 가능합니다. 인스타그램 DM 또는 이메일로 연락해 주시면 됩니다. 당일 취소는 이후 참가 신청에 제한이 있을 수 있습니다.', order_seq: 4 },
     { id: 'f5', question: '주차 공간이 있나요?', answer: '송도 국제캠핑장 내 주차장을 이용하실 수 있습니다. 주말에는 방문객이 많아 주차 공간이 부족할 수 있으므로, 대중교통 이용을 권장합니다.', order_seq: 5 },
     { id: 'f6', question: '어떻게 신청하나요?', answer: '이 페이지 하단의 참가 신청 양식을 작성하거나, 인스타그램 DM으로 문의하시면 됩니다. 신청 후 검토를 거쳐 1~3일 내에 결과를 알려드립니다.', order_seq: 6 }
+  ],
+  newsletter_templates: [
+    { id: 't1', title: '기본 행사 안내', subject: '[송도 버스킹 마켓] 이번 주말 소식을 전해드립니다!', content: '안녕하세요! 이번 주말 송도 국제캠핑장에서 열리는 행사 안내입니다.\n\n다양한 버스킹 공연과 개성 넘치는 플리마켓 셀러분들이 여러분을 기다리고 있습니다.\n가족, 친구와 함께 즐거운 시간 보내세요!', created_at: '2026-03-01T00:00:00Z' },
+    { id: 't2', title: '우천 취소 공지', subject: '[송도 버스킹 마켓] 기상 악화로 인한 행사 취소 안내', content: '안녕하세요. 송도 버스킹 마켓 운영팀입니다.\n\n금일 기상 악화(우천) 예보로 인해 관람객과 출연진의 안전을 위하여 행사가 취소되었음을 알려드립니다.\n기다려주신 분들께 양해 부탁드리며, 다음 주에 더 좋은 모습으로 찾아뵙겠습니다.', created_at: '2026-03-02T00:00:00Z' }
   ]
 };
 
@@ -195,6 +199,7 @@ const SAMPLE_RESET_TARGETS = [
   { table: 'seller_pool', lockId: 'pool-seed-lock', optional: false },
   { table: 'newsletter', lockId: 'news-seed-lock', optional: true },
   { table: 'faqs', lockId: 'faq-seed-lock', optional: true },
+  { table: 'newsletter_templates', lockId: 'news-temp-seed-lock', optional: true },
 ] as const;
 
 export const DB = {
@@ -296,6 +301,41 @@ export const DB = {
       }
     }
     return { success: true };
+  },
+
+  // NEWSLETTER TEMPLATES
+  async getNewsletterTemplates() {
+    const local = this.getLocalData('newsletter_templates');
+    if (this.isConfigured()) {
+      try {
+        const { data, error } = await supabase.from('newsletter_templates').select('*').order('created_at', { ascending: false });
+        if (!error && data) {
+          this.setLocalData('newsletter_templates', data);
+          return data;
+        }
+      } catch (e) { console.error(e); }
+    }
+    return local || MOCK_DATA.newsletter_templates;
+  },
+
+  async createNewsletterTemplate(payload: any) {
+    const list = await this.getNewsletterTemplates();
+    const newItem = { id: 'temp_' + Date.now(), ...payload, created_at: new Date().toISOString() };
+    this.setLocalData('newsletter_templates', [newItem, ...list]);
+    
+    if (this.isConfigured()) {
+      return await supabase.from('newsletter_templates').insert([payload]);
+    }
+    return { data: newItem, error: null };
+  },
+
+  async deleteNewsletterTemplate(id: string) {
+    const list = this.getLocalData('newsletter_templates') || [];
+    this.setLocalData('newsletter_templates', list.filter((t: any) => t.id !== id));
+    if (this.isConfigured()) {
+      return await supabase.from('newsletter_templates').delete().eq('id', id);
+    }
+    return { error: null };
   },
 
   // ... (existing methods)
@@ -1148,6 +1188,7 @@ export const DB = {
     const spData = MOCK_DATA.seller_pool.map(({ id, ...rest }) => ({ id, ...rest }));
     const nData = MOCK_DATA.newsletter.map(({ id, ...rest }) => ({ ...rest }));
     const fData = MOCK_DATA.faqs.map(({ id, ...rest }) => ({ ...rest }));
+    const ntData = MOCK_DATA.newsletter_templates.map(({ id, ...rest }) => ({ ...rest }));
 
     const insertJobs = [
       { table: 'buskers', rows: bData, optional: false },
@@ -1159,6 +1200,7 @@ export const DB = {
       { table: 'seller_pool', rows: spData, optional: false },
       { table: 'newsletter', rows: nData, optional: true },
       { table: 'faqs', rows: fData, optional: true },
+      { table: 'newsletter_templates', rows: ntData, optional: true },
     ];
 
     const results = await Promise.all(

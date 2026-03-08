@@ -6,28 +6,33 @@ import { GALLERY_ITEMS } from "@/lib/constants";
 import { DB } from "@/lib/supabase";
 
 export default function GallerySection() {
-  const [urls, setUrls] = useState<string[]>(GALLERY_ITEMS.map(item => item.url));
-  const [captions, setCaptions] = useState<string[]>(GALLERY_ITEMS.map(item => item.caption));
+  const [galleryItems, setGalleryItems] = useState<any[]>(GALLERY_ITEMS);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
     const loadImgs = async () => {
       const dbImgs = await DB.getImages();
-      const newUrls = GALLERY_ITEMS.map((item, idx) => {
+      const updated = GALLERY_ITEMS.map((item, idx) => {
         const found = dbImgs?.find((i: any) => i.id === `img-gallery-${idx + 1}` && i.active);
-        return found?.url || item.url;
+        return {
+          ...item,
+          url: found?.url || item.url,
+          caption: found?.caption || item.caption,
+          colSpan: found?.colSpan || item.colSpan,
+          rowSpan: found?.rowSpan || item.rowSpan,
+          minHeight: found?.minHeight || item.minHeight,
+        };
       });
-      const newCaptions = GALLERY_ITEMS.map((item, idx) => {
-        const found = dbImgs?.find((i: any) => i.id === `img-gallery-${idx + 1}` && i.active);
-        return found?.caption || item.caption;
-      });
-      setUrls(newUrls);
-      setCaptions(newCaptions);
+      setGalleryItems(updated);
     };
     loadImgs();
   }, []);
 
+  if (!mounted) return <section className="min-h-screen bg-white" />;
+
   return (
-    <section className="py-14 md:py-24 bg-white">
+    <section className="relative py-14 md:py-24 bg-white">
       <div className="max-w-7xl mx-auto px-6">
         <AnimateOnScroll direction="up" className="text-center mb-8 md:mb-16">
           <h3
@@ -49,9 +54,9 @@ export default function GallerySection() {
         </AnimateOnScroll>
 
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
-          {GALLERY_ITEMS.map((item, idx) => (
+          {galleryItems.map((item, idx) => (
             <AnimateOnScroll
-              key={item.caption}
+              key={idx}
               direction="up"
               className={`relative group cursor-pointer rounded-3xl overflow-hidden shadow-md hover:shadow-2xl transition-all duration-300 ${item.colSpan} ${item.rowSpan}`}
               style={{ minHeight: item.minHeight } as React.CSSProperties}
@@ -59,7 +64,7 @@ export default function GallerySection() {
               <img
                 alt={item.caption}
                 className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-500"
-                src={urls[idx]}
+                src={item.url}
                 loading="lazy"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end">
@@ -67,7 +72,7 @@ export default function GallerySection() {
                   className="text-white text-lg font-medium p-6"
                   style={{ fontFamily: '"Noto Sans KR", sans-serif' }}
                 >
-                  {captions[idx]}
+                  {item.caption}
                 </p>
               </div>
             </AnimateOnScroll>
