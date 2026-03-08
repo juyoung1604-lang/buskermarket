@@ -1,0 +1,1009 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>송도 버스킹 마켓</title>
+  <meta
+    name="description"
+    content="송도국제캠핑장에서 열리는 버스킹 공연과 플리마켓을 소개하는 GitHub Pages용 정적 홈페이지입니다."
+  />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800;900&display=swap"
+    rel="stylesheet"
+  />
+  <link
+    href="https://cdn.jsdelivr.net/npm/remixicon@4.6.0/fonts/remixicon.css"
+    rel="stylesheet"
+  />
+  <style>
+    :root {
+      --bg: #f7f4ee;
+      --paper: #fffdf9;
+      --ink: #2c2c2c;
+      --muted: #6b6b6b;
+      --line: #e6dfd5;
+      --accent: #ff8b5a;
+      --accent-soft: #ffe0d2;
+      --green: #a8d5ba;
+      --green-deep: #4a5d3f;
+      --shadow: 0 20px 50px rgba(44, 44, 44, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: "Noto Sans KR", sans-serif;
+      color: var(--ink);
+      background: #ffffff;
+    }
+
+    a { color: inherit; text-decoration: none; }
+    img { display: block; max-width: 100%; }
+
+    .container {
+      width: min(1180px, calc(100% - 32px));
+      margin: 0 auto;
+    }
+
+    .section {
+      padding: 96px 0;
+    }
+
+    .eyebrow {
+      margin: 0 0 14px;
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.24em;
+      text-transform: uppercase;
+    }
+
+    .title {
+      margin: 0;
+      font-size: clamp(32px, 6vw, 60px);
+      line-height: 1.1;
+      font-weight: 900;
+      letter-spacing: -0.04em;
+    }
+
+    .body-copy {
+      color: var(--muted);
+      font-size: 17px;
+      line-height: 1.8;
+    }
+
+    .btn {
+      border: 0;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 15px 26px;
+      border-radius: 999px;
+      font-weight: 800;
+      font-size: 15px;
+      transition: transform .2s ease, background-color .2s ease, color .2s ease, border-color .2s ease;
+    }
+
+    .btn:hover { transform: translateY(-2px); }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-secondary { background: rgba(255,255,255,.14); color: #fff; border: 2px solid rgba(255,255,255,.8); }
+    .btn-dark { background: var(--ink); color: #fff; }
+
+    .nav {
+      position: fixed;
+      inset: 0 0 auto 0;
+      z-index: 50;
+      transition: background-color .25s ease, box-shadow .25s ease, padding .25s ease;
+      padding: 18px 0;
+    }
+
+    .nav.scrolled {
+      background: rgba(255,255,255,.94);
+      backdrop-filter: blur(12px);
+      box-shadow: 0 8px 30px rgba(44,44,44,.08);
+      padding: 12px 0;
+    }
+
+    .nav-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 900;
+      letter-spacing: -0.03em;
+    }
+
+    .brand-logo {
+      width: 44px;
+      height: 44px;
+      border-radius: 14px;
+      overflow: hidden;
+      background: #fff;
+      box-shadow: 0 10px 24px rgba(44,44,44,.12);
+      flex-shrink: 0;
+    }
+
+    .brand-text {
+      font-size: 19px;
+      color: #fff;
+    }
+
+    .nav.scrolled .brand-text,
+    .nav.scrolled .nav-link {
+      color: var(--ink);
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 28px;
+    }
+
+    .nav-link {
+      color: rgba(255,255,255,.88);
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .hero {
+      position: relative;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      overflow: hidden;
+      color: #fff;
+      background:
+        linear-gradient(90deg, rgba(0,0,0,.56), rgba(0,0,0,.2)),
+        url("https://picsum.photos/seed/songdo-hero/1920/1080") center/cover no-repeat;
+    }
+
+    .hero::after {
+      content: "";
+      position: absolute;
+      inset: auto 0 0;
+      height: 140px;
+      background: linear-gradient(180deg, rgba(255,255,255,0), #fff);
+    }
+
+    .hero-copy {
+      position: relative;
+      z-index: 1;
+      max-width: 700px;
+      padding-top: 72px;
+    }
+
+    .hero-kicker {
+      margin: 0 0 12px;
+      font-size: clamp(16px, 3vw, 26px);
+      font-weight: 400;
+      color: rgba(255,255,255,.9);
+    }
+
+    .hero-title {
+      margin: 0;
+      font-size: clamp(38px, 9vw, 84px);
+      line-height: 1.02;
+      font-weight: 900;
+      letter-spacing: -0.05em;
+    }
+
+    .hero-title span {
+      display: block;
+      color: var(--accent);
+    }
+
+    .hero-desc {
+      margin: 22px 0 0;
+      max-width: 560px;
+      font-size: clamp(16px, 2.6vw, 21px);
+      line-height: 1.75;
+      color: rgba(255,255,255,.82);
+    }
+
+    .hero-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      margin-top: 34px;
+    }
+
+    .hero-subactions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 18px;
+      color: rgba(255,255,255,.84);
+      font-weight: 600;
+    }
+
+    .hero-subactions a {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: rgba(255,255,255,.9);
+    }
+
+    .hero-watermark {
+      position: absolute;
+      left: 50%;
+      bottom: 24px;
+      transform: translateX(-50%);
+      font-size: clamp(44px, 10vw, 180px);
+      line-height: .9;
+      letter-spacing: -0.08em;
+      font-weight: 900;
+      color: rgba(0,0,0,.08);
+      white-space: nowrap;
+      user-select: none;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1.1fr .9fr;
+      gap: 44px;
+      align-items: center;
+    }
+
+    .card-grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 22px;
+    }
+
+    .panel {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 30px;
+      box-shadow: var(--shadow);
+    }
+
+    .about-art {
+      position: relative;
+      min-height: 520px;
+    }
+
+    .about-photo-main,
+    .about-photo-sub {
+      position: absolute;
+      border-radius: 32px;
+      overflow: hidden;
+      box-shadow: var(--shadow);
+    }
+
+    .about-photo-main {
+      inset: 0 70px 70px 0;
+    }
+
+    .about-photo-sub {
+      right: 0;
+      bottom: 0;
+      width: 220px;
+      height: 240px;
+      border: 8px solid #fff;
+    }
+
+    .detail-card {
+      overflow: hidden;
+    }
+
+    .detail-card img {
+      width: 100%;
+      aspect-ratio: 4 / 3;
+      object-fit: cover;
+    }
+
+    .detail-body {
+      padding: 24px;
+    }
+
+    .detail-badge {
+      display: inline-block;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+    }
+
+    .detail-title {
+      margin: 14px 0 8px;
+      font-size: 24px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+    }
+
+    .split-band {
+      background: linear-gradient(135deg, var(--green-deep), #24311e);
+      color: #fff;
+    }
+
+    .split-layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 36px;
+      align-items: center;
+    }
+
+    .feature-list {
+      display: grid;
+      gap: 16px;
+      margin: 28px 0 32px;
+    }
+
+    .feature-item {
+      display: flex;
+      gap: 16px;
+      align-items: flex-start;
+      padding: 18px 20px;
+      background: rgba(255,255,255,.08);
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 24px;
+    }
+
+    .feature-icon {
+      width: 52px;
+      height: 52px;
+      border-radius: 18px;
+      background: rgba(255,255,255,.12);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      flex-shrink: 0;
+    }
+
+    .mosaic {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 14px;
+    }
+
+    .mosaic img {
+      width: 100%;
+      height: 240px;
+      object-fit: cover;
+      border-radius: 26px;
+      box-shadow: var(--shadow);
+    }
+
+    .gallery {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 18px;
+    }
+
+    .gallery figure {
+      margin: 0;
+      position: relative;
+      overflow: hidden;
+      border-radius: 28px;
+      min-height: 240px;
+    }
+
+    .gallery img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .gallery figcaption {
+      position: absolute;
+      inset: auto 16px 16px 16px;
+      padding: 12px 14px;
+      border-radius: 18px;
+      background: rgba(0,0,0,.48);
+      color: #fff;
+      font-size: 14px;
+      font-weight: 700;
+      backdrop-filter: blur(8px);
+    }
+
+    .faq-list {
+      display: grid;
+      gap: 16px;
+      margin-top: 32px;
+    }
+
+    .faq-item {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      padding: 24px;
+      box-shadow: 0 12px 30px rgba(44,44,44,.04);
+    }
+
+    .faq-q {
+      margin: 0 0 10px;
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+    }
+
+    .contact-wrap {
+      display: grid;
+      grid-template-columns: .9fr 1.1fr;
+      gap: 28px;
+    }
+
+    .contact-note,
+    .contact-form {
+      padding: 34px;
+    }
+
+    .contact-note {
+      background: linear-gradient(160deg, #fff1ea, #fff9f2);
+      border: 1px solid #ffd8c8;
+      border-radius: 32px;
+    }
+
+    .contact-form {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 32px;
+      box-shadow: var(--shadow);
+    }
+
+    .type-switch {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 22px;
+      padding: 8px;
+      background: #f7f4ef;
+      border-radius: 22px;
+    }
+
+    .type-switch button {
+      padding: 14px 16px;
+      border: 0;
+      border-radius: 16px;
+      background: transparent;
+      font: inherit;
+      font-weight: 800;
+      color: var(--muted);
+      cursor: pointer;
+    }
+
+    .type-switch button.active {
+      background: #fff;
+      color: var(--ink);
+      box-shadow: 0 10px 24px rgba(44,44,44,.08);
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .field {
+      display: grid;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .field label {
+      font-size: 12px;
+      font-weight: 800;
+      color: #7b756e;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .field input,
+    .field textarea,
+    .field select {
+      width: 100%;
+      border: 1px solid #e7e0d6;
+      background: #fcfaf6;
+      border-radius: 18px;
+      padding: 15px 16px;
+      font: inherit;
+      color: var(--ink);
+      outline: none;
+    }
+
+    .field textarea { min-height: 120px; resize: vertical; }
+
+    .footer {
+      background: #f0f4ef;
+      overflow: hidden;
+    }
+
+    .footer-top {
+      padding: 72px 0 42px;
+    }
+
+    .footer-grid {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr 1fr 1fr;
+      gap: 28px;
+    }
+
+    .footer-title {
+      margin: 0 0 16px;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+    }
+
+    .footer-links {
+      display: grid;
+      gap: 12px;
+      color: var(--muted);
+    }
+
+    .footer-mark {
+      padding: 18px 0 10px;
+      text-align: center;
+      font-size: clamp(42px, 10vw, 124px);
+      font-weight: 900;
+      color: rgba(44,44,44,.1);
+      letter-spacing: -0.06em;
+    }
+
+    .footer-bottom {
+      padding: 22px 0 32px;
+      border-top: 1px solid #d9dfd7;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .footer-bottom .container {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .scroll-top {
+      position: fixed;
+      right: 20px;
+      bottom: 20px;
+      z-index: 60;
+      width: 52px;
+      height: 52px;
+      border: 0;
+      border-radius: 999px;
+      background: var(--ink);
+      color: #fff;
+      box-shadow: 0 18px 30px rgba(44,44,44,.2);
+      cursor: pointer;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+    }
+
+    .scroll-top.show { display: inline-flex; }
+
+    @media (max-width: 960px) {
+      .nav-links { display: none; }
+      .grid-2,
+      .split-layout,
+      .contact-wrap,
+      .footer-grid,
+      .gallery,
+      .card-grid-3 {
+        grid-template-columns: 1fr;
+      }
+      .about-art {
+        min-height: auto;
+        display: grid;
+        gap: 16px;
+      }
+      .about-photo-main,
+      .about-photo-sub {
+        position: static;
+        width: 100%;
+        height: auto;
+      }
+      .about-photo-sub { border-width: 0; }
+      .mosaic img { height: 180px; }
+      .hero-watermark { display: none; }
+      .footer-bottom .container {
+        flex-direction: column;
+        text-align: center;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .section { padding: 76px 0; }
+      .hero-actions { flex-direction: column; }
+      .btn { width: 100%; }
+      .form-grid { grid-template-columns: 1fr; }
+      .contact-note,
+      .contact-form { padding: 24px; }
+      .mosaic { grid-template-columns: 1fr 1fr; }
+      .brand-text { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <header class="nav" id="nav">
+    <div class="container nav-inner">
+      <a class="brand" href="#top">
+        <span class="brand-logo">
+          <img src="https://public.readdy.ai/ai/img_res/45c168a6-36b7-4bad-818f-94278d7fbdd7.png" alt="송도 버스킹 마켓 로고" />
+        </span>
+        <span class="brand-text">송도 버스킹 마켓</span>
+      </a>
+      <nav class="nav-links">
+        <a class="nav-link" href="#details">프로그램 소개</a>
+        <a class="nav-link" href="#busker">버스커 모집</a>
+        <a class="nav-link" href="#seller">셀러 모집</a>
+        <a class="nav-link" href="#faq">FAQ</a>
+        <a class="btn btn-dark" href="#contact">참가신청</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="top">
+    <section class="hero">
+      <div class="container">
+        <div class="hero-copy">
+          <p class="hero-kicker">매주 주말, 도심 속 힐링</p>
+          <h1 class="hero-title">
+            송도국제캠핑장
+            <span>버스킹 &amp; 플리마켓</span>
+          </h1>
+          <p class="hero-desc">
+            음악이 흐르는 캠핑장, 감성 가득한 마켓에서 특별한 주말을 만들어보세요.
+            GitHub Pages에 바로 올릴 수 있도록 정적 페이지로 구성한 홈페이지 버전입니다.
+          </p>
+          <div class="hero-actions">
+            <a class="btn btn-primary" href="#contact" onclick="setApplyType('busker')">버스커 참가 신청</a>
+            <a class="btn btn-secondary" href="#contact" onclick="setApplyType('seller')">플리마켓 셀러 신청</a>
+          </div>
+          <div class="hero-subactions">
+            <a href="#details"><i class="ri-calendar-event-line"></i><span>행사 안내 보기</span></a>
+          </div>
+        </div>
+      </div>
+      <div class="hero-watermark">EVERY WEEKEND</div>
+    </section>
+
+    <section class="section" id="about" style="background:#fafaf9;">
+      <div class="container grid-2">
+        <div class="about-art">
+          <div class="about-photo-main">
+            <img src="https://picsum.photos/seed/busker-stage/1000/1200" alt="버스킹 공연" />
+          </div>
+          <div class="about-photo-sub">
+            <img src="https://picsum.photos/seed/flea-market/500/560" alt="플리마켓 부스" />
+          </div>
+        </div>
+        <div>
+          <p class="eyebrow">Event Story</p>
+          <h2 class="title">도심 속에서 즐기는 낭만적인 주말</h2>
+          <p class="body-copy">
+            송도 캠핑장을 배경으로 펼쳐지는 버스킹 공연과 플리마켓은 음악, 휴식, 소비가 자연스럽게 이어지는 주말형 콘텐츠입니다.
+            방문객은 편하게 즐기고, 참가자는 자신의 무대와 브랜드를 소개할 수 있습니다.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="details">
+      <div class="container">
+        <p class="eyebrow">Program</p>
+        <h2 class="title" style="margin-bottom:22px;">행사 안내</h2>
+        <div class="card-grid-3">
+          <article class="panel detail-card">
+            <img src="https://picsum.photos/seed/detail-schedule/600/420" alt="행사 일정" />
+            <div class="detail-body">
+              <span class="detail-badge">Schedule</span>
+              <h3 class="detail-title">매주 토 · 일요일</h3>
+              <p class="body-copy">오후 2시부터 6시까지 버스킹과 마켓이 함께 진행됩니다.</p>
+            </div>
+          </article>
+          <article class="panel detail-card">
+            <img src="https://picsum.photos/seed/detail-location/600/420" alt="행사 위치" />
+            <div class="detail-body">
+              <span class="detail-badge">Location</span>
+              <h3 class="detail-title">송도 국제캠핑장</h3>
+              <p class="body-copy">야외 공연존과 셀러 부스를 운영하기 좋은 동선으로 구성됩니다.</p>
+            </div>
+          </article>
+          <article class="panel detail-card">
+            <img src="https://picsum.photos/seed/detail-support/600/420" alt="지원 사항" />
+            <div class="detail-body">
+              <span class="detail-badge">Support</span>
+              <h3 class="detail-title">공간 및 운영 지원</h3>
+              <p class="body-copy">운영 공지, 현장 진행, 참가자 안내 등 기본 운영 흐름을 지원합니다.</p>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section split-band" id="busker">
+      <div class="container split-layout">
+        <div>
+          <p class="eyebrow" style="color:#b9f0cb;">Busker</p>
+          <h2 class="title">무대를 기다리는 버스커 모집</h2>
+          <p class="body-copy" style="color:rgba(255,255,255,.72);">
+            솔로, 듀오, 밴드 등 다양한 장르의 아티스트를 모집합니다. 관객과 가까운 거리에서 소통할 수 있는 야외형 공연 무대입니다.
+          </p>
+          <div class="feature-list">
+            <div class="feature-item">
+              <div class="feature-icon"><i class="ri-music-2-line"></i></div>
+              <div>
+                <strong>모집 분야</strong>
+                <div style="color:rgba(255,255,255,.72); margin-top:6px;">어쿠스틱, 인디, 재즈, 팝, 밴드, 퍼포먼스</div>
+              </div>
+            </div>
+            <div class="feature-item">
+              <div class="feature-icon"><i class="ri-calendar-check-line"></i></div>
+              <div>
+                <strong>운영 일정</strong>
+                <div style="color:rgba(255,255,255,.72); margin-top:6px;">주말 중심 공연 편성, 관리자 승인 후 일정 확정</div>
+              </div>
+            </div>
+          </div>
+          <a class="btn btn-primary" href="#contact" onclick="setApplyType('busker')">버스커 신청하기</a>
+        </div>
+        <div class="mosaic">
+          <img src="https://picsum.photos/seed/outdoor-concert/700/840" alt="버스킹 이미지 1" />
+          <img src="https://picsum.photos/seed/busker-guitar/700/840" alt="버스킹 이미지 2" />
+          <img src="https://picsum.photos/seed/busker-live/700/840" alt="버스킹 이미지 3" />
+          <img src="https://picsum.photos/seed/busker-stage-night/700/840" alt="버스킹 이미지 4" />
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="seller" style="background:#faf7f2;">
+      <div class="container split-layout">
+        <div class="mosaic">
+          <img src="https://picsum.photos/seed/seller-jewelry/700/840" alt="셀러 이미지 1" />
+          <img src="https://picsum.photos/seed/seller-goods/700/840" alt="셀러 이미지 2" />
+          <img src="https://picsum.photos/seed/seller-food/700/840" alt="셀러 이미지 3" />
+          <img src="https://picsum.photos/seed/seller-camping/700/840" alt="셀러 이미지 4" />
+        </div>
+        <div>
+          <p class="eyebrow">Seller</p>
+          <h2 class="title">감성 브랜드를 위한 셀러 모집</h2>
+          <p class="body-copy">
+            핸드메이드, 리빙, 액세서리, 디저트, 라이프스타일 굿즈 등 감각적인 상품을 소개할 셀러를 모집합니다.
+          </p>
+          <div class="feature-list" style="margin-bottom:30px;">
+            <div class="feature-item" style="background:#fff; border-color:#efe4d7;">
+              <div class="feature-icon" style="background:#fff3eb; color:var(--accent);"><i class="ri-store-2-line"></i></div>
+              <div>
+                <strong>운영 방식</strong>
+                <div style="color:var(--muted); margin-top:6px;">행사별 정원과 결제 완료 기준으로 셀러가 확정됩니다.</div>
+              </div>
+            </div>
+            <div class="feature-item" style="background:#fff; border-color:#efe4d7;">
+              <div class="feature-icon" style="background:#eef8f1; color:var(--green-deep);"><i class="ri-price-tag-3-line"></i></div>
+              <div>
+                <strong>참가 안내</strong>
+                <div style="color:var(--muted); margin-top:6px;">행사 일정에 맞는 부스 신청 후 관리 승인 및 결제로 확정됩니다.</div>
+              </div>
+            </div>
+          </div>
+          <a class="btn btn-dark" href="#contact" onclick="setApplyType('seller')">셀러 신청하기</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="gallery">
+      <div class="container">
+        <p class="eyebrow">Moments</p>
+        <h2 class="title" style="margin-bottom:22px;">캠핑장의 풍경</h2>
+        <div class="gallery">
+          <figure><img src="https://picsum.photos/seed/gallery-family/800/600" alt="가족과 함께하는 주말" /><figcaption>가족과 함께하는 주말</figcaption></figure>
+          <figure><img src="https://picsum.photos/seed/gallery-concert/600/800" alt="라이브 공연의 열기" /><figcaption>라이브 공연의 열기</figcaption></figure>
+          <figure><img src="https://picsum.photos/seed/gallery-craft/600/600" alt="특별한 수제 제품들" /><figcaption>특별한 수제 제품들</figcaption></figure>
+          <figure><img src="https://picsum.photos/seed/gallery-market/800/600" alt="마켓에서의 만남" /><figcaption>마켓에서의 만남</figcaption></figure>
+          <figure><img src="https://picsum.photos/seed/gallery-busking/600/800" alt="감성적인 버스킹" /><figcaption>감성적인 버스킹</figcaption></figure>
+          <figure><img src="https://picsum.photos/seed/gallery-camping/800/600" alt="송도 캠핑장 전경" /><figcaption>송도 캠핑장 전경</figcaption></figure>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="faq" style="background:#fafaf9;">
+      <div class="container" style="max-width:960px;">
+        <p class="eyebrow">FAQ</p>
+        <h2 class="title">자주 묻는 질문</h2>
+        <div class="faq-list">
+          <article class="faq-item">
+            <h3 class="faq-q">버스커와 셀러는 어떻게 선정되나요?</h3>
+            <p class="body-copy">관리자 페이지에서 행사 일정별로 신청자를 검토하고, 버스커는 승인 기준, 셀러는 결제 완료 기준으로 노출 및 확정됩니다.</p>
+          </article>
+          <article class="faq-item">
+            <h3 class="faq-q">GitHub Pages에서도 신청 저장이 되나요?</h3>
+            <p class="body-copy">이 `index.html`은 정적 배포용입니다. 신청 저장, 관리자 로그인, 실시간 일정 연동은 Next.js 서버 배포 환경에서 동작합니다.</p>
+          </article>
+          <article class="faq-item">
+            <h3 class="faq-q">신청 확인은 어디서 하나요?</h3>
+            <p class="body-copy">정식 배포에서는 `버스커 신청 확인`, `셀러 신청 확인` 페이지에서 이름과 휴대폰 번호로 상태 조회가 가능합니다.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="contact">
+      <div class="container contact-wrap">
+        <aside class="contact-note">
+          <p class="eyebrow">Apply</p>
+          <h2 class="title" style="font-size:clamp(30px,5vw,48px);">참가 신청 안내</h2>
+          <p class="body-copy">
+            이 페이지는 GitHub 업로드용 정적 버전이므로 실제 저장은 수행하지 않습니다.
+            대신 현재 화면 흐름과 참가유형 선택 동작은 동일하게 확인할 수 있게 구성했습니다.
+          </p>
+          <div style="display:grid; gap:12px; margin-top:24px;">
+            <div class="panel" style="padding:18px 20px; border-radius:22px; box-shadow:none;">
+              <strong>버스커</strong>
+              <div style="color:var(--muted); margin-top:6px;">공연 장르, 팀 정보, 연락처 중심 신청</div>
+            </div>
+            <div class="panel" style="padding:18px 20px; border-radius:22px; box-shadow:none;">
+              <strong>셀러</strong>
+              <div style="color:var(--muted); margin-top:6px;">상품 카테고리, 행사 날짜, 부스 정보 중심 신청</div>
+            </div>
+          </div>
+        </aside>
+
+        <section class="contact-form">
+          <div class="type-switch">
+            <button id="type-busker" class="active" type="button" onclick="setApplyType('busker')">버스커 신청</button>
+            <button id="type-seller" type="button" onclick="setApplyType('seller')">셀러 신청</button>
+          </div>
+          <form id="apply-form">
+            <div class="form-grid">
+              <div class="field">
+                <label for="name">이름 / 팀명</label>
+                <input id="name" type="text" placeholder="홍길동 또는 팀명" />
+              </div>
+              <div class="field">
+                <label for="phone">연락처</label>
+                <input id="phone" type="tel" placeholder="010-0000-0000" />
+              </div>
+            </div>
+            <div class="form-grid">
+              <div class="field">
+                <label for="email">이메일</label>
+                <input id="email" type="email" placeholder="sample@example.com" />
+              </div>
+              <div class="field">
+                <label for="date">희망 행사일</label>
+                <input id="date" type="date" />
+              </div>
+            </div>
+            <div class="field">
+              <label for="category">참가 유형 상세</label>
+              <select id="category">
+                <option>어쿠스틱 / 보컬</option>
+                <option>인디 밴드</option>
+                <option>핸드메이드 소품</option>
+                <option>리빙 / 라이프스타일</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="note">소개 / 메모</label>
+              <textarea id="note" placeholder="공연 또는 판매하실 내용을 간단히 적어주세요."></textarea>
+            </div>
+            <button class="btn btn-primary" type="submit" style="width:100%;">정적 버전 신청 확인</button>
+          </form>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-top">
+      <div class="container footer-grid">
+        <div>
+          <img src="https://public.readdy.ai/ai/img_res/45c168a6-36b7-4bad-818f-94278d7fbdd7.png" alt="송도 버스킹 마켓" style="height:48px; width:auto; margin-bottom:14px;" />
+          <p class="body-copy" style="font-size:15px;">
+            매주 주말 송도 캠핑장에서 열리는 버스킹 공연과 플리마켓.
+          </p>
+        </div>
+        <div>
+          <h4 class="footer-title">신청 확인</h4>
+          <div class="footer-links">
+            <a href="#contact" onclick="setApplyType('busker')">버스커 신청 확인</a>
+            <a href="#contact" onclick="setApplyType('seller')">셀러 신청 확인</a>
+          </div>
+        </div>
+        <div>
+          <h4 class="footer-title">바로가기</h4>
+          <div class="footer-links">
+            <a href="#details">프로그램 소개</a>
+            <a href="#busker">버스커 모집</a>
+            <a href="#seller">셀러 모집</a>
+          </div>
+        </div>
+        <div>
+          <h4 class="footer-title">채널</h4>
+          <div class="footer-links">
+            <a href="https://instagram.com" target="_blank" rel="noopener noreferrer">Instagram</a>
+            <a href="https://youtube.com" target="_blank" rel="noopener noreferrer">YouTube</a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="footer-mark">송도버스킹마켓</div>
+    <div class="footer-bottom">
+      <div class="container">
+        <span>© 2026 송도 버스킹 마켓. All rights reserved.</span>
+        <span>Powered by 넥스트스테이즈</span>
+      </div>
+    </div>
+  </footer>
+
+  <button class="scroll-top" id="scrollTopBtn" type="button" aria-label="맨 위로 이동">
+    <i class="ri-arrow-up-line"></i>
+  </button>
+
+  <script>
+    const nav = document.getElementById("nav");
+    const scrollTopBtn = document.getElementById("scrollTopBtn");
+    const typeBusker = document.getElementById("type-busker");
+    const typeSeller = document.getElementById("type-seller");
+    const category = document.getElementById("category");
+    const applyForm = document.getElementById("apply-form");
+
+    function handleScrollState() {
+      const isScrolled = window.scrollY > 24;
+      nav.classList.toggle("scrolled", isScrolled);
+      scrollTopBtn.classList.toggle("show", window.scrollY > 360);
+    }
+
+    function setApplyType(type) {
+      const buskerOptions = [
+        "어쿠스틱 / 보컬",
+        "인디 밴드",
+        "재즈 / 연주",
+        "퍼포먼스"
+      ];
+      const sellerOptions = [
+        "핸드메이드 소품",
+        "리빙 / 라이프스타일",
+        "액세서리 / 패션",
+        "디저트 / 푸드"
+      ];
+
+      typeBusker.classList.toggle("active", type === "busker");
+      typeSeller.classList.toggle("active", type === "seller");
+
+      category.innerHTML = "";
+      (type === "busker" ? buskerOptions : sellerOptions).forEach((item) => {
+        const option = document.createElement("option");
+        option.value = item;
+        option.textContent = item;
+        category.appendChild(option);
+      });
+    }
+
+    applyForm.addEventListener("submit", function (event) {
+      event.preventDefault();
+      alert("이 index.html은 GitHub Pages용 정적 페이지입니다. 실제 신청 저장 기능은 Next.js 배포본에서 동작합니다.");
+    });
+
+    scrollTopBtn.addEventListener("click", function () {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+
+    window.addEventListener("scroll", handleScrollState, { passive: true });
+    handleScrollState();
+    setApplyType("busker");
+  </script>
+</body>
+</html>
