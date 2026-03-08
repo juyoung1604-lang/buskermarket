@@ -23,6 +23,7 @@ export default function Footer() {
   const infoLinks = [
     { label: "플랫폼 소개", href: "/intro" },
     { label: "이용 및 운영약관", href: "/terms" },
+    { label: "개인정보 처리방침", href: "/privacy" },
   ];
 
   const statusLinks = [

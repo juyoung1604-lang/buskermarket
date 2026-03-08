@@ -82,6 +82,60 @@ const SettingsPage = () => {
     }
   };
 
+  const GALLERY_LAYOUT_PATTERNS = [
+    // 패턴 1: 기본형 (밸런스)
+    [
+      { col: 'col-span-1 md:col-span-2', row: 'row-span-1' }, { col: 'col-span-1', row: 'md:row-span-2' },
+      { col: 'col-span-1', row: 'row-span-1' }, { col: 'col-span-1 md:col-span-2', row: 'row-span-1' },
+      { col: 'col-span-1', row: 'md:row-span-2' }, { col: 'col-span-1 md:col-span-2', row: 'row-span-1' }
+    ],
+    // 패턴 2: 강조형 (첫 번째 이미지 크게)
+    [
+      { col: 'col-span-1 md:col-span-2', row: 'md:row-span-2' }, { col: 'col-span-1', row: 'row-span-1' },
+      { col: 'col-span-1', row: 'row-span-1' }, { col: 'col-span-1', row: 'row-span-1' },
+      { col: 'col-span-1', row: 'row-span-1' }, { col: 'col-span-1', row: 'row-span-1' }
+    ],
+    // 패턴 3: 모자이크 (지그재그)
+    [
+      { col: 'col-span-1', row: 'row-span-1' }, { col: 'col-span-1 md:col-span-2', row: 'row-span-1' },
+      { col: 'col-span-1 md:col-span-2', row: 'row-span-1' }, { col: 'col-span-1', row: 'row-span-1' },
+      { col: 'col-span-1', row: 'row-span-1' }, { col: 'col-span-1 md:col-span-2', row: 'row-span-1' }
+    ],
+    // 패턴 4: 세로 강조형
+    [
+      { col: 'col-span-1', row: 'md:row-span-2' }, { col: 'col-span-1', row: 'md:row-span-2' },
+      { col: 'col-span-1', row: 'row-span-1' }, { col: 'col-span-1', row: 'row-span-1' },
+      { col: 'col-span-1 md:col-span-2', row: 'row-span-1' }, { col: 'col-span-1', row: 'row-span-1' }
+    ]
+  ];
+
+  const handleAutoGalleryLayout = async () => {
+    if (!confirm('갤러리 6장의 레이아웃을 자동으로 변경하시겠습니까?')) return;
+    
+    // 랜덤 패턴 선택
+    const pattern = GALLERY_LAYOUT_PATTERNS[Math.floor(Math.random() * GALLERY_LAYOUT_PATTERNS.length)];
+    const promises = [];
+
+    for (let i = 0; i < 6; i++) {
+      const id = `img-gallery-${i + 1}`;
+      const layout = pattern[i];
+      const current = images.find(img => img.id === id) || {};
+      
+      promises.push(
+        DB.updateImage(id, {
+          ...current,
+          colSpan: layout.col,
+          rowSpan: layout.row,
+          minHeight: '220px' // 기본 높이 통일
+        })
+      );
+    }
+
+    await Promise.all(promises);
+    toast('새로운 레이아웃이 적용되었습니다!', 'jade');
+    loadImages();
+  };
+
   const downloadCSV = async (type: string) => {
     let data = [];
     if (type === 'busker') data = await DB.getBuskers();
@@ -216,9 +270,20 @@ const SettingsPage = () => {
                 data-image-group={group.title}
                 style={{ border: '1px solid var(--line)', borderRadius: '16px', padding: '16px', background: 'var(--bg)', scrollMarginTop: '12px' }}
               >
-                <div style={{ marginBottom: '14px' }}>
-                  <div style={{ fontSize: '.85rem', fontWeight: 800, color: 'var(--text)', marginBottom: '4px' }}>{group.title}</div>
-                  <div style={{ fontSize: '.72rem', color: 'var(--muted)' }}>{group.desc}</div>
+                <div style={{ marginBottom: '14px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <div>
+                    <div style={{ fontSize: '.85rem', fontWeight: 800, color: 'var(--text)', marginBottom: '4px' }}>{group.title}</div>
+                    <div style={{ fontSize: '.72rem', color: 'var(--muted)' }}>{group.desc}</div>
+                  </div>
+                  {group.title === '페이지 이미지' && (
+                    <button 
+                      onClick={handleAutoGalleryLayout}
+                      className="btn btn-ghost" 
+                      style={{ fontSize: '.7rem', color: 'var(--jade)', padding: '4px 8px', height: 'auto' }}
+                    >
+                      <i className="fa-solid fa-wand-magic-sparkles"></i> 갤러리 자동 배치
+                    </button>
+                  )}
                 </div>
                 <div className="space-y-4">
                   {group.items.map((item) => {

@@ -5,7 +5,7 @@ import { IMAGES } from "@/lib/constants";
 import { DB } from "@/lib/supabase";
 
 const NAV_LINKS = [
-  { label: "플랫폼 소개", href: "/intro" },
+  { label: "소개", href: "/#about" },
   { label: "버스커 모집", href: "/#busker" },
   { label: "셀러 모집", href: "/#seller" },
   { label: "FAQ", href: "/#faq" },
@@ -36,11 +36,23 @@ export default function Navbar() {
 
   const handleNavClick = (href: string) => {
     setMobileMenuOpen(false);
-    if (href.startsWith('/')) {
+    
+    // Check if it's an anchor on the same page
+    if (href.startsWith('/#')) {
+      const targetId = href.replace('/#', '#');
+      const el = document.querySelector(targetId);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth" });
+        return;
+      }
+    }
+
+    if (href.startsWith('/') && !href.includes('#')) {
       window.location.href = href;
       return;
     }
-    const targetId = href.replace('/#', '#');
+
+    const targetId = href.startsWith('#') ? href : href.substring(href.indexOf('#'));
     const el = document.querySelector(targetId);
     if (el) {
       el.scrollIntoView({ behavior: "smooth" });

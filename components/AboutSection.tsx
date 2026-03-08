@@ -73,19 +73,6 @@ export default function AboutSection() {
                 것이 준비되어 있습니다.
               </p>
             </div>
-            <a
-              href="#details"
-              className="inline-flex items-center gap-2 font-medium underline cursor-pointer hover:opacity-70 transition-opacity"
-              style={{ color: "#2C2C2C" }}
-              onClick={(e) => {
-                e.preventDefault();
-                document
-                  .querySelector("#details")
-                  ?.scrollIntoView({ behavior: "smooth" });
-              }}
-            >
-              자세히 보기 <i className="ri-arrow-right-line"></i>
-            </a>
             <div className="flex gap-8 sm:gap-12 mt-8 md:mt-12">
               <div>
                 <div
