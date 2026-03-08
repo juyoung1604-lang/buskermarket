@@ -108,8 +108,8 @@ export default function DetailsSection() {
   return (
     <section id="details" className="py-14 md:py-24 bg-[#FAFAF9]">
       <div className="max-w-7xl mx-auto px-6">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 md:mb-16">
-          <div>
+        <div className="flex flex-col gap-3 mb-8 md:mb-16 md:grid md:grid-cols-3 md:gap-6 md:items-end">
+          <div className="md:col-span-1">
             <p
               className="text-xs sm:text-lg md:text-2xl font-bold mb-2 uppercase tracking-widest opacity-30"
               style={{ color: "#2C2C2C", fontFamily: '"Noto Sans KR", sans-serif' }}
@@ -127,11 +127,10 @@ export default function DetailsSection() {
             </h3>
           </div>
           <p
-            className="text-sm md:text-base lg:text-lg mt-3 md:mt-0 md:w-1/2 font-medium"
+            className="text-sm md:text-base lg:text-lg font-medium leading-relaxed md:col-span-2 md:self-start"
             style={{ color: "#6B6B6B", fontFamily: '"Noto Sans KR", sans-serif' }}
           >
-            송도 캠핑장에서 매주 주말마다 진행되는 버스킹 공연과 플리마켓의
-            상세 정보를 확인하세요.
+            송도 국제 캠핑장에서 매주 주말마다 진행되는 버스킹 공연과 플리마켓의 상세 정보를 확인하세요.
           </p>
         </div>
 

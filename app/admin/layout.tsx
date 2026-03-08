@@ -13,23 +13,27 @@ import './admin.css';
 // RBAC — Roles & Permissions Configuration
 // ══════════════════════════════════════════════════
 export const ROLES: { [key: string]: any } = {
+  master_admin: {
+    key: 'master_admin', label: '마스터관리자', color: 'var(--coral)', icon: 'fa-user-tie',
+    perms: { view_all: true, approve: true, reject: true, create: true, edit: true, delete: true, account_access: true, manage_accounts: true, view_revenue: true, system_settings: true, data_management: true, create_super_admin: true, supabase_access: true }
+  },
   super_admin: {
     key: 'super_admin', label: '슈퍼관리자', color: 'var(--jade)', icon: 'fa-crown',
-    perms: { view_all: true, approve: true, reject: true, create: true, edit: true, delete: true, manage_accounts: true, view_revenue: true, system_settings: true }
+    perms: { view_all: true, approve: true, reject: true, create: true, edit: true, delete: true, account_access: true, manage_accounts: true, view_revenue: true, system_settings: true, data_management: true, create_super_admin: false, supabase_access: false }
   },
   admin: {
     key: 'admin', label: '관리자', color: 'var(--sky)', icon: 'fa-user-shield',
-    perms: { view_all: true, approve: true, reject: true, create: true, edit: true, delete: true, manage_accounts: false, view_revenue: true, system_settings: true }
+    perms: { view_all: true, approve: true, reject: true, create: true, edit: true, delete: true, account_access: true, manage_accounts: false, view_revenue: true, system_settings: true, data_management: false, create_super_admin: false, supabase_access: false }
   },
   operator: {
     key: 'operator', label: '운영자', color: 'var(--lav)', icon: 'fa-user-check',
-    perms: { view_all: true, approve: true, reject: true, create: false, edit: false, delete: false, manage_accounts: false, view_revenue: false, system_settings: false }
+    perms: { view_all: true, approve: true, reject: true, create: false, edit: false, delete: false, account_access: true, manage_accounts: false, view_revenue: false, system_settings: false, data_management: false, create_super_admin: false, supabase_access: false }
   },
 };
 
 export const PERM_LABELS: { [key: string]: string } = {
   view_all: '조회', approve: '승인', reject: '거절', create: '등록', edit: '수정', delete: '삭제',
-  manage_accounts: '계정관리', view_revenue: '매출조회', system_settings: '설정'
+  account_access: '계정페이지접근', manage_accounts: '계정관리', view_revenue: '매출조회', system_settings: '설정', data_management: '데이터관리', create_super_admin: '슈퍼관리자생성', supabase_access: 'Supabase연동'
 };
 
 const AdminContext = createContext<{
@@ -48,24 +52,43 @@ const AdminContext = createContext<{
 
 export const useAdmin = () => useContext(AdminContext);
 
+const mergeRoleConfig = (savedRoles: any) => {
+  const merged: any = { ...ROLES };
+
+  Object.entries(savedRoles || {}).forEach(([roleKey, roleValue]: [string, any]) => {
+    merged[roleKey] = {
+      ...(ROLES[roleKey] || {}),
+      ...roleValue,
+      perms: {
+        ...(ROLES[roleKey]?.perms || {}),
+        ...(roleValue?.perms || {})
+      }
+    };
+  });
+
+  return merged;
+};
+
 const PermissionBanner = ({ role, roles }: { role: string, roles: any }) => {
   const r = roles[role] || roles.operator;
   return (
-    <div className="perm-banner-bar" style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '5px 22px', fontSize: '.68rem', background: 'var(--ink3)', borderBottom: '1px solid var(--line)' }}>
-      <div className="perm-banner-dots" style={{ display: 'flex', gap: '3px' }}>
-        {Object.keys(PERM_LABELS).map(k => (
-          <div 
-            key={k} 
-            className="pb-dot" 
-            style={{ width: '7px', height: '7px', borderRadius: '50%', background: r.perms[k] ? r.color : 'var(--line2)', boxShadow: r.perms[k] ? `0 0 5px ${r.color}` : 'none' }}
-            title={PERM_LABELS[k]}
-          />
-        ))}
+    <div className="info-strip perm-banner-bar">
+      <div className="info-strip-content">
+        <div className="perm-banner-dots" style={{ display: 'flex', gap: '3px' }}>
+          {Object.keys(PERM_LABELS).map(k => (
+            <div 
+              key={k} 
+              className="pb-dot" 
+              style={{ width: '7px', height: '7px', borderRadius: '50%', background: r.perms[k] ? r.color : 'var(--line2)', boxShadow: r.perms[k] ? `0 0 5px ${r.color}` : 'none' }}
+              title={PERM_LABELS[k]}
+            />
+          ))}
+        </div>
+        <span id="perm-banner-text">
+          <b style={{ color: r.color }}>{r.label}</b>로 접속 중 |
+          <span style={{ color: r.color, marginLeft: '5px' }}>✓ {Object.entries(r.perms).filter(([_, v]) => v).map(([k]) => PERM_LABELS[k]).join(' · ')}</span>
+        </span>
       </div>
-      <span id="perm-banner-text" style={{ flex: 1 }}>
-        <b style={{ color: r.color }}>{r.label}</b>로 접속 중 | 
-        <span style={{ color: r.color, marginLeft: '5px' }}>✓ {Object.entries(r.perms).filter(([_, v]) => v).map(([k]) => PERM_LABELS[k]).join(' · ')}</span>
-      </span>
     </div>
   );
 };
@@ -91,15 +114,14 @@ const SupabaseStatusBar = () => {
   }, []);
 
   return (
-    <div className="supa-bar" style={{ background: 'var(--ink3)', borderBottom: '1px solid var(--line)', padding: '5px 22px', display: 'flex', alignItems: 'center', gap: '14px', fontSize: '.67rem' }}>
-      <div className="supa-logo" style={{ display: 'flex', alignItems: 'center', gap: '5px', fontFamily: 'var(--font-mono)', fontWeight: 500, color: 'var(--soft)' }}>
-        <i className="fa-solid fa-database" style={{ color: '#3ECF8E' }}></i> Supabase
-      </div>
-      <div className={`dot-pulse ${online ? 'dot-jade' : 'dot-gold'}`} style={{ width: '7px', height: '7px', borderRadius: '50%', background: online ? 'var(--jade)' : 'var(--gold)', boxShadow: online ? '0 0 6px var(--jade)' : '0 0 6px var(--gold)' }}></div>
-      <span className="supa-status-text" style={{ color: 'var(--soft)', fontFamily: 'var(--font-mono)' }}>{online ? '연결됨' : '미연결 (오프라인)'}</span>
-      {queueCount > 0 && <span style={{ color: 'var(--gold)', fontFamily: 'var(--font-mono)' }}>(미동기화 {queueCount}건)</span>}
-      <div className="supa-right" style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '8px' }}>
-        <button className="supa-btn" style={{ padding: '3px 10px', borderRadius: '4px', border: '1px solid var(--line2)', background: 'none', color: 'var(--muted)', fontSize: '.65rem', cursor: 'pointer' }} onClick={() => window.location.reload()}><i className="fa-solid fa-rotate"></i> 동기화</button>
+    <div className="info-strip supa-bar">
+      <div className="info-strip-content">
+        <div className="supa-logo" style={{ display: 'flex', alignItems: 'center', gap: '5px', fontFamily: 'var(--font-mono)', fontWeight: 500, color: 'var(--soft)' }}>
+          <i className="fa-solid fa-database" style={{ color: '#3ECF8E' }}></i> Supabase
+        </div>
+        <div className={`dot-pulse ${online ? 'dot-jade' : 'dot-gold'}`} style={{ width: '7px', height: '7px', borderRadius: '50%', background: online ? 'var(--jade)' : 'var(--gold)', boxShadow: online ? '0 0 6px var(--jade)' : '0 0 6px var(--gold)' }}></div>
+        <span className="supa-status-text" style={{ color: 'var(--soft)', fontFamily: 'var(--font-mono)' }}>{online ? '연결됨' : '미연결 (오프라인)'}</span>
+        {queueCount > 0 && <span style={{ color: 'var(--gold)', fontFamily: 'var(--font-mono)' }}>(미동기화 {queueCount}건)</span>}
       </div>
     </div>
   );
@@ -113,6 +135,7 @@ export default function AdminLayout({
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
   const [role, setRole] = useState('operator');
+  const [permOverrides, setPermOverrides] = useState<Record<string, boolean>>({});
   const [dynamicRoles, setDynamicRoles] = useState<any>(ROLES);
   const router = useRouter();
   const pathname = usePathname();
@@ -121,7 +144,9 @@ export default function AdminLayout({
     // Load dynamic roles from local storage
     const savedRoles = localStorage.getItem('admin_dynamic_roles');
     if (savedRoles) {
-      setDynamicRoles(JSON.parse(savedRoles));
+      const mergedRoles = mergeRoleConfig(JSON.parse(savedRoles));
+      setDynamicRoles(mergedRoles);
+      localStorage.setItem('admin_dynamic_roles', JSON.stringify(mergedRoles));
     }
   }, []);
 
@@ -141,7 +166,8 @@ export default function AdminLayout({
   };
 
   const can = (perm: string) => {
-    const currentRole = dynamicRoles[role];
+    const currentRole = dynamicRoles[role] || ROLES[role] || ROLES.operator;
+    if (typeof permOverrides?.[perm] === 'boolean') return permOverrides[perm] === true;
     return currentRole?.perms[perm] === true;
   };
 
@@ -174,6 +200,7 @@ export default function AdminLayout({
         const profiles = await DB.getAdminProfiles();
         const myProfile = Array.isArray(profiles) ? profiles.find((p: any) => p.id === sessionData.user.id || p.email === sessionData.user.email) : null;
         setRole(myProfile?.role || sessionData.user.user_metadata?.role || 'super_admin');
+        setPermOverrides(myProfile?.perm_overrides || {});
         
         if (pathname === '/admin/login') {
           router.replace('/admin');
@@ -211,18 +238,31 @@ export default function AdminLayout({
     );
   }
 
-  if (pathname === '/admin/login') {
+  const isLoginPage = pathname === '/admin/login';
+
+  // If no user and not on login page, show spinner while redirecting
+  if (!user && !isLoginPage) {
+    return (
+      <div className="admin-shell" style={{ alignItems: 'center', justifyContent: 'center' }}>
+        <span className="spinner spinner-lg"></span>
+      </div>
+    );
+  }
+
+  if (isLoginPage) {
     return <>{children}</>;
   }
 
   // Permission guards
-  const guards: { [key: string]: string } = {
-    '/admin/revenue': 'view_revenue',
-    '/admin/accounts': 'manage_accounts',
-    '/admin/settings': 'system_settings'
-  };
+  const guardEntries: Array<[string, string]> = [
+    ['/admin/revenue', 'view_revenue'],
+    ['/admin/accounts', 'account_access'],
+    ['/admin/settings', 'system_settings'],
+    ['/admin/supabase', 'supabase_access']
+  ];
+  const matchedGuard = guardEntries.find(([prefix]) => pathname === prefix || pathname.startsWith(prefix + '/'));
 
-  if (guards[pathname] && !can(guards[pathname])) {
+  if (matchedGuard && !can(matchedGuard[1])) {
     return (
       <div className="admin-shell" style={{ alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '20px' }}>
         <div style={{ fontSize: '3rem' }}>🚫</div>

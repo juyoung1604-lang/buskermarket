@@ -6,6 +6,7 @@ import { DB } from '@/lib/supabase';
 import { useToast } from '@/components/admin/Toast';
 import DetailModal from '@/components/admin/DetailModal';
 import AddModal from '@/components/admin/AddModal';
+import { useAdmin } from '@/app/admin/layout';
 
 const parseNote = (note: string) => {
   if (!note) return { message: '', links: [] as string[] };
@@ -19,12 +20,23 @@ const parseNote = (note: string) => {
 
 const PoolPage = () => {
   const { toast } = useToast();
+  const { role, can } = useAdmin();
+
+  // 권한 정의
+  // - 마스터관리자 / 슈퍼관리자: 삭제 가능
+  // - 관리자: 등록·수정 가능, 삭제 불가
+  // - 운영자: 조회만 가능
+  const canDelete = role === 'master_admin' || role === 'super_admin';
+  const canEdit = can('edit');
+  const canCreate = can('create');
+
   const [tab, setTab] = useState<'busker' | 'seller'>('busker');
   const [pool, setPool] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [selectedItem, setSelectedItem] = useState<any>(null);
+  const [addingItem, setAddingItem] = useState(false);
   const [editingItem, setEditingItem] = useState<any>(null);
 
   useEffect(() => {
@@ -54,6 +66,7 @@ const PoolPage = () => {
   };
 
   const handleDelete = async (id: string) => {
+    if (!canDelete) return;
     if (!confirm('인력 풀에서 영구히 삭제하시겠습니까? (이력 데이터가 사라집니다)')) return;
     const table = tab === 'busker' ? 'busker_pool' : 'seller_pool';
     const { error } = await DB.deletePool(table, id);
@@ -66,6 +79,7 @@ const PoolPage = () => {
   };
 
   const handleBulkDelete = async () => {
+    if (!canDelete) return;
     if (!confirm(`선택한 ${selectedIds.length}명을 풀에서 삭제하시겠습니까?`)) return;
     const table = tab === 'busker' ? 'busker_pool' : 'seller_pool';
     setLoading(true);
@@ -77,33 +91,19 @@ const PoolPage = () => {
     fetchPool();
   };
 
-  const downloadCSV = () => {
-    if (pool.length === 0) return;
-    const headers = tab === 'busker' ? ['이름','팀명','장르','연락처','이메일','신청횟수','최초등록'] : ['이름','카테고리','연락처','이메일','신청횟수','최초등록'];
-    const rows = pool.map(p => tab === 'busker' ? 
-      [p.name, p.team, p.genre, p.phone, p.email, p.app_count, p.created_at] :
-      [p.name, p.category, p.phone, p.email, p.app_count, p.created_at]
-    );
-    const csvContent = "data:text/csv;charset=utf-8,\uFEFF" 
-      + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-    const link = document.createElement("a");
-    link.setAttribute("href", encodeURI(csvContent));
-    link.setAttribute("download", `songdo_${tab}_pool.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
   const filteredData = pool.filter(p => 
     (p.name || '').toLowerCase().includes(search.toLowerCase()) || 
     (p.phone || '').includes(search) ||
     (p.team || '').toLowerCase().includes(search.toLowerCase())
   );
 
+  // 컬럼 수 (삭제 권한 있을 때 체크박스 컬럼 추가)
+  const colSpanCount = canDelete ? 7 : 6;
+
   return (
     <div className="space-y-6">
-      {/* 일괄 관리 플로팅 바 */}
-      {selectedIds.length > 0 && (
+      {/* 일괄 삭제 플로팅 바 — 삭제 권한자만 표시 */}
+      {canDelete && selectedIds.length > 0 && (
         <div style={{ position: 'sticky', top: '0', zIndex: 40, background: 'var(--ink2)', color: 'var(--head)', padding: '12px 20px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '12px', boxShadow: '0 10px 30px rgba(0,0,0,0.1)', border: '1px solid var(--line)', marginBottom: '10px' }}>
           <span style={{ fontWeight: 800, fontSize: '.85rem', marginRight: 'auto' }}><i className="fa-solid fa-check-double"></i> {selectedIds.length}명 선택됨</span>
           <div style={{ display: 'flex', gap: '8px' }}>
@@ -123,24 +123,28 @@ const PoolPage = () => {
           <i className="fa-solid fa-magnifying-glass"></i>
           <input type="text" placeholder="이름, 연락처, 팀명 검색…" value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
-        <div className="tbl-actions">
-          <button className="btn btn-sky" onClick={downloadCSV}>
-            <i className="fa-solid fa-file-csv"></i> CSV 내보내기
+        {/* 직접 등록 — 관리자 이상만 표시 */}
+        {canCreate && (
+          <button className="btn btn-jade" onClick={() => setAddingItem(true)}>
+            <i className="fa-solid fa-user-plus"></i> 직접 등록
           </button>
-        </div>
+        )}
       </div>
 
       <div className="tbl-wrap">
         <table>
           <thead>
             <tr>
-              <th style={{ width: '36px' }}>
-                <input 
-                  type="checkbox" 
-                  checked={selectedIds.length > 0 && selectedIds.length === filteredData.length}
-                  onChange={handleSelectAll}
-                />
-              </th>
+              {/* 체크박스 컬럼 — 삭제 권한자만 표시 */}
+              {canDelete && (
+                <th style={{ width: '36px' }}>
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.length > 0 && selectedIds.length === filteredData.length}
+                    onChange={handleSelectAll}
+                  />
+                </th>
+              )}
               <th>이름</th>
               <th>{tab === 'busker' ? '팀명/장르' : '카테고리'}</th>
               <th>연락처/이메일</th>
@@ -151,19 +155,22 @@ const PoolPage = () => {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={7} style={{ textAlign: 'center', padding: '40px' }}><span className="spinner"></span></td></tr>
+              <tr><td colSpan={colSpanCount} style={{ textAlign: 'center', padding: '40px' }}><span className="spinner"></span></td></tr>
             ) : filteredData.length === 0 ? (
-              <tr><td colSpan={7} style={{ textAlign: 'center', padding: '40px', color: 'var(--muted)' }}>저장된 데이터가 없습니다.</td></tr>
+              <tr><td colSpan={colSpanCount} style={{ textAlign: 'center', padding: '40px', color: 'var(--muted)' }}>저장된 데이터가 없습니다.</td></tr>
             ) : filteredData.map(p => (
               <tr key={p.id} style={{ background: selectedIds.includes(p.id) ? 'var(--ink3)' : 'transparent' }}>
-                <td>
-                  <input 
-                    type="checkbox" 
-                    className="rc" 
-                    checked={selectedIds.includes(p.id)}
-                    onChange={() => handleSelectOne(p.id)}
-                  />
-                </td>
+                {/* 체크박스 — 삭제 권한자만 */}
+                {canDelete && (
+                  <td>
+                    <input
+                      type="checkbox"
+                      className="rc"
+                      checked={selectedIds.includes(p.id)}
+                      onChange={() => handleSelectOne(p.id)}
+                    />
+                  </td>
+                )}
                 <td className="td-main">{p.name}</td>
                 <td>
                   {tab === 'busker' ? (
@@ -185,9 +192,22 @@ const PoolPage = () => {
                 <td className="td-mono">{p.last_applied_at?.split('T')[0] || '-'}</td>
                 <td>
                   <div className="td-acts">
-                    <button className="ico-btn" title="상세보기" onClick={() => setSelectedItem(p)}><i className="fa-solid fa-eye"></i></button>
-                    <button className="ico-btn" title="수정" onClick={() => setEditingItem(p)}><i className="fa-solid fa-pen-to-square"></i></button>
-                    <button className="ico-btn reject" title="삭제" onClick={() => handleDelete(p.id)}><i className="fa-solid fa-trash"></i></button>
+                    {/* 조회 — 전체 */}
+                    <button className="ico-btn" title="상세보기" onClick={() => setSelectedItem(p)}>
+                      <i className="fa-solid fa-eye"></i>
+                    </button>
+                    {/* 수정 — 관리자 이상 */}
+                    {canEdit && (
+                      <button className="ico-btn" title="수정" onClick={() => setEditingItem(p)}>
+                        <i className="fa-solid fa-pen-to-square"></i>
+                      </button>
+                    )}
+                    {/* 삭제 — 슈퍼관리자 이상 */}
+                    {canDelete && (
+                      <button className="ico-btn reject" title="삭제" onClick={() => handleDelete(p.id)}>
+                        <i className="fa-solid fa-trash"></i>
+                      </button>
+                    )}
                   </div>
                 </td>
               </tr>
@@ -241,15 +261,28 @@ const PoolPage = () => {
         );
       })()}
 
-      {/* 수정 모달 (기존 AddModal 재사용하거나 전용 모달 구성 가능) */}
-      <AddModal 
-        type={tab as any} 
-        isOpen={!!editingItem} 
-        onClose={() => setEditingItem(null)} 
-        onSuccess={() => { setEditingItem(null); fetchPool(); }} 
-        initialData={editingItem}
-        mode="pool"
-      />
+      {/* 직접 등록 모달 — 관리자 이상 */}
+      {canCreate && (
+        <AddModal
+          type={tab as any}
+          isOpen={addingItem}
+          onClose={() => setAddingItem(false)}
+          onSuccess={() => { setAddingItem(false); fetchPool(); }}
+          mode="pool"
+        />
+      )}
+
+      {/* 수정 모달 — 관리자 이상 */}
+      {canEdit && (
+        <AddModal
+          type={tab as any}
+          isOpen={!!editingItem}
+          onClose={() => setEditingItem(null)}
+          onSuccess={() => { setEditingItem(null); fetchPool(); }}
+          initialData={editingItem}
+          mode="pool"
+        />
+      )}
     </div>
   );
 };

@@ -33,6 +33,7 @@ const Topbar = () => {
     const segments = pathname.split('/').filter(Boolean);
     const isDashboard = segments.length === 1 && segments[0] === 'admin';
     const page = segments[1];
+    const subPage = segments[2];
 
     if (isDashboard) {
       return { title: '대시보드', bc: '홈 / 대시보드' };
@@ -46,7 +47,10 @@ const Topbar = () => {
       case 'revenue': return { title: '매출 & 정산', bc: '홈 / 운영 / 매출' };
       case 'accounts': return { title: '계정 관리', bc: '홈 / 시스템 / 계정 관리' };
       case 'supabase': return { title: 'Supabase 연동', bc: '홈 / 시스템 / Supabase' };
-      case 'settings': return { title: '설정', bc: '홈 / 시스템 / 설정' };
+      case 'settings':
+        if (subPage === 'system') return { title: '설정', bc: '홈 / 시스템 / 설정' };
+        if (subPage === 'homepage-images') return { title: '홈페이지 이미지관리', bc: '홈 / 홈페이지 관리 / 홈페이지 이미지관리' };
+        return { title: '설정', bc: '홈 / 시스템 / 설정' };
       default: return { title: '관리 시스템', bc: '홈' };
     }
   };

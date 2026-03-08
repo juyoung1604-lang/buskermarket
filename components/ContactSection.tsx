@@ -9,8 +9,11 @@ import { useToast } from "@/components/admin/Toast";
 export default function ContactSection() {
   const { toast } = useToast();
   const [settings, setSettings] = useState({
+    admin_page_name: "SONGDO ADMIN",
     busker_deposit: 50000,
-    seller_booth_fee: 30000
+    seller_booth_fee: 30000,
+    deposit_bank: "",
+    deposit_account: ""
   });
 
   const [formData, setFormData] = useState({
@@ -151,7 +154,20 @@ export default function ContactSection() {
 
       if (res.error) throw res.error;
       
-      toast(`신청서가 제출되었습니다. ${formData.type === 'busker' ? '보증금' : '부스비'} ₩${calculatedFee.toLocaleString()} 입금 후 승인 처리됩니다.`, 'jade');
+      // Create Admin Log
+      await DB.createAdminLog({
+        type: formData.type === 'busker' ? 'microphone' : 'store',
+        color: formData.type === 'busker' ? 'var(--jade)' : 'var(--gold)',
+        title: `신규 ${formData.type === 'busker' ? '버스커' : '셀러'} 신청`,
+        desc: `${formData.name} (${formData.type === 'busker' ? formData.team || '솔로' : formData.category})`
+      });
+
+      const feeText = `${formData.type === 'busker' ? '보증금' : '부스비'} ₩${calculatedFee.toLocaleString()}`;
+      const bankInfo = settings.deposit_bank && settings.deposit_account 
+        ? `\n[입금처: ${settings.deposit_bank} ${settings.deposit_account}]` 
+        : "";
+
+      toast(`신청서가 제출되었습니다. ${feeText} 입금 확인 후 승인 처리됩니다.${bankInfo}`, 'jade');
       
       setFormData({
         name: "", email: "", phone: "", birth_date: "", organization: "",

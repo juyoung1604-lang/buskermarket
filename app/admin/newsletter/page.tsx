@@ -5,15 +5,22 @@ import React, { useEffect, useState } from 'react';
 import { DB } from '@/lib/supabase';
 import { useToast } from '@/components/admin/Toast';
 import { motion } from 'framer-motion';
+import { useAdmin } from '../layout';
 
 const NewsletterPage = () => {
   const { toast } = useToast();
+  const { can } = useAdmin();
+  const canManageGmail = can('supabase_access');
   const [emails, setEmails] = useState<any[]>([]);
   const [templates, setTemplates] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [showTemplateForm, setShowTemplateForm] = useState(false);
   const [templateTitle, setTemplateTitle] = useState('');
+  
+  // Selection & Search
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   
   // Gmail Settings
   const [gmailConfig, setGmailConfig] = useState({
@@ -40,9 +47,36 @@ const NewsletterPage = () => {
   const fetchEmails = async () => {
     setLoading(true);
     const data = await DB.getNewsletters();
-    setEmails(data || []);
+    const list = data || [];
+    setEmails(list);
+    // Initially select all
+    setSelectedIds(new Set(list.map((n: any) => n.id)));
     setLoading(false);
   };
+
+  const toggleSelectAll = () => {
+    const filtered = emails.filter(e => e.email.toLowerCase().includes(searchTerm.toLowerCase()));
+    if (filtered.length > 0 && filtered.every(f => selectedIds.has(f.id))) {
+      const newSelected = new Set(selectedIds);
+      filtered.forEach(f => newSelected.delete(f.id));
+      setSelectedIds(newSelected);
+    } else {
+      const newSelected = new Set(selectedIds);
+      filtered.forEach(f => newSelected.add(f.id));
+      setSelectedIds(newSelected);
+    }
+  };
+
+  const toggleSelect = (id: string) => {
+    const newSelected = new Set(selectedIds);
+    if (newSelected.has(id)) newSelected.delete(id);
+    else newSelected.add(id);
+    setSelectedIds(newSelected);
+  };
+
+  const filteredEmails = emails.filter(e => 
+    e.email.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   const fetchTemplates = async () => {
     const data = await DB.getNewsletterTemplates();
@@ -51,6 +85,10 @@ const NewsletterPage = () => {
 
   const handleGmailConnect = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!canManageGmail) {
+      toast('Gmail 연동 설정은 마스터관리자만 변경할 수 있습니다.', 'rose');
+      return;
+    }
     if (!gmailConfig.email || !gmailConfig.appPassword) {
       toast('Gmail 계정과 앱 비밀번호를 입력해주세요.', 'rose');
       return;
@@ -63,6 +101,10 @@ const NewsletterPage = () => {
   };
 
   const handleGmailDisconnect = () => {
+    if (!canManageGmail) {
+      toast('Gmail 연동 설정은 마스터관리자만 변경할 수 있습니다.', 'rose');
+      return;
+    }
     const newConfig = { email: '', appPassword: '', isConnected: false };
     setGmailConfig(newConfig);
     localStorage.removeItem('songdo_gmail_config');
@@ -132,8 +174,13 @@ const NewsletterPage = () => {
       toast('제목과 내용을 입력해주세요.', 'rose');
       return;
     }
-    if (emails.length === 0) {
-      toast('구독자가 없습니다.', 'rose');
+    
+    const recipients = emails
+      .filter(e => selectedIds.has(e.id))
+      .map(e => e.email);
+
+    if (recipients.length === 0) {
+      toast('발송할 대상을 선택해주세요.', 'rose');
       return;
     }
 
@@ -146,7 +193,7 @@ const NewsletterPage = () => {
         body: JSON.stringify({
           gmailUser: gmailConfig.email,
           gmailPass: gmailConfig.appPassword,
-          recipients: emails.map(e => e.email),
+          recipients: recipients,
           subject: compose.subject,
           content: compose.content
         }),
@@ -155,7 +202,7 @@ const NewsletterPage = () => {
       const result = await response.json();
 
       if (result.success) {
-        toast(`${emails.length}명의 구독자에게 뉴스레터 발송이 완료되었습니다.`, 'jade');
+        toast(`${recipients.length}명의 구독자에게 뉴스레터 발송이 완료되었습니다.`, 'jade');
         setCompose({ subject: '', content: '' });
         
         // Log this activity
@@ -163,7 +210,7 @@ const NewsletterPage = () => {
           type: 'paper-plane',
           color: 'var(--jade)',
           title: '뉴스레터 발송 완료',
-          desc: `${compose.subject} (${emails.length}명)`
+          desc: `${compose.subject} (${recipients.length}명)`
         });
       } else {
         throw new Error(result.error || '메일 발송 실패');
@@ -188,7 +235,8 @@ const NewsletterPage = () => {
               {gmailConfig.isConnected && <span className="badge b-approved">연결됨</span>}
             </div>
             <div className="card-body">
-              {!gmailConfig.isConnected ? (
+              {canManageGmail ? (
+                !gmailConfig.isConnected ? (
                 <form onSubmit={handleGmailConnect} className="space-y-3">
                   <div className="fg">
                     <label>발송 Gmail 주소</label>
@@ -217,7 +265,7 @@ const NewsletterPage = () => {
                     <i className="fa-brands fa-google"></i> Gmail 연동하기
                   </button>
                 </form>
-              ) : (
+                ) : (
                 <div className="space-y-4">
                   <div style={{ padding: '12px', background: 'var(--ink3)', borderRadius: '8px', border: '1px solid var(--line)' }}>
                     <div style={{ fontSize: '.7rem', color: 'var(--muted)' }}>연동된 계정</div>
@@ -226,6 +274,14 @@ const NewsletterPage = () => {
                   <button onClick={handleGmailDisconnect} className="btn" style={{ width: '100%', color: 'var(--rose)' }}>
                     <i className="fa-solid fa-link-slash"></i> 연동 해제
                   </button>
+                </div>
+                )
+              ) : (
+                <div style={{ padding: '12px', background: 'var(--ink3)', borderRadius: '8px', border: '1px solid var(--line)' }}>
+                  <div style={{ fontSize: '.7rem', color: 'var(--muted)' }}>연동된 계정</div>
+                  <div style={{ fontWeight: 700, color: 'var(--text)' }}>
+                    {gmailConfig.isConnected && gmailConfig.email ? gmailConfig.email : '연동된 Gmail 계정 없음'}
+                  </div>
                 </div>
               )}
             </div>
@@ -290,33 +346,67 @@ const NewsletterPage = () => {
           {/* Subscriber List Card */}
           <div className="card">
             <div className="card-h">
-              <span className="card-title">구독자 명단 ({emails.length})</span>
+              <span className="card-title">구독자 명단 ({filteredEmails.length})</span>
               <button onClick={fetchEmails} className="btn btn-ghost" style={{ fontSize: '.7rem' }}>
                 <i className="fa-solid fa-rotate"></i>
               </button>
             </div>
-            <div className="card-body" style={{ padding: 0, maxHeight: '400px', overflowY: 'auto' }}>
-              <table style={{ width: '100%' }}>
-                <tbody style={{ fontSize: '.8rem' }}>
-                  {loading ? (
-                    <tr><td className="p-10 text-center"><span className="spinner"></span></td></tr>
-                  ) : emails.length === 0 ? (
-                    <tr><td className="p-10 text-center text-muted">구독자가 없습니다.</td></tr>
-                  ) : emails.map(n => (
-                    <tr key={n.id} style={{ borderBottom: '1px solid var(--line)' }}>
-                      <td style={{ padding: '10px 16px' }}>
-                        <div style={{ fontWeight: 500 }}>{n.email}</div>
-                        <div style={{ fontSize: '.65rem', color: 'var(--muted)' }}>{n.created_at?.split('T')[0]}</div>
-                      </td>
-                      <td style={{ padding: '10px 16px', textAlign: 'right' }}>
-                        <button onClick={() => handleDelete(n.id)} style={{ color: 'var(--muted)', background: 'none', border: 'none', cursor: 'pointer' }}>
-                          <i className="fa-solid fa-trash-can"></i>
-                        </button>
-                      </td>
+            <div className="card-body" style={{ padding: 0 }}>
+              <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)', background: 'var(--ink3)' }}>
+                <div style={{ position: 'relative' }}>
+                  <i className="fa-solid fa-magnifying-glass" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--muted)', fontSize: '.8rem' }}></i>
+                  <input 
+                    className="fi" 
+                    style={{ paddingLeft: '34px', height: '36px', fontSize: '.8rem' }}
+                    placeholder="구독자 이메일 검색..." 
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                </div>
+              </div>
+              <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead style={{ position: 'sticky', top: 0, background: 'var(--ink3)', zIndex: 10, borderBottom: '1px solid var(--line)' }}>
+                    <tr>
+                      <th style={{ padding: '10px 16px', width: '40px', textAlign: 'left' }}>
+                        <input 
+                          type="checkbox" 
+                          checked={filteredEmails.length > 0 && filteredEmails.every(e => selectedIds.has(e.id))}
+                          onChange={toggleSelectAll}
+                        />
+                      </th>
+                      <th style={{ padding: '10px 0', textAlign: 'left', fontSize: '.7rem', color: 'var(--muted)', fontWeight: 600 }}>이메일 주소</th>
+                      <th style={{ padding: '10px 16px', width: '40px' }}></th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody style={{ fontSize: '.8rem' }}>
+                    {loading ? (
+                      <tr><td colSpan={3} className="p-10 text-center"><span className="spinner"></span></td></tr>
+                    ) : filteredEmails.length === 0 ? (
+                      <tr><td colSpan={3} className="p-10 text-center text-muted">구독자가 없습니다.</td></tr>
+                    ) : filteredEmails.map(n => (
+                      <tr key={n.id} style={{ borderBottom: '1px solid var(--line)', background: selectedIds.has(n.id) ? 'rgba(13, 148, 136, 0.03)' : 'transparent' }}>
+                        <td style={{ padding: '10px 16px' }}>
+                          <input 
+                            type="checkbox" 
+                            checked={selectedIds.has(n.id)}
+                            onChange={() => toggleSelect(n.id)}
+                          />
+                        </td>
+                        <td style={{ padding: '10px 0', cursor: 'pointer' }} onClick={() => toggleSelect(n.id)}>
+                          <div style={{ fontWeight: 500 }}>{n.email}</div>
+                          <div style={{ fontSize: '.65rem', color: 'var(--muted)' }}>{n.created_at?.split('T')[0]}</div>
+                        </td>
+                        <td style={{ padding: '10px 16px', textAlign: 'right' }}>
+                          <button onClick={(e) => { e.stopPropagation(); handleDelete(n.id); }} style={{ color: 'var(--muted)', background: 'none', border: 'none', cursor: 'pointer' }}>
+                            <i className="fa-solid fa-trash-can"></i>
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         </div>
@@ -329,9 +419,9 @@ const NewsletterPage = () => {
               <button 
                 className="btn btn-jade" 
                 onClick={handleSendMail} 
-                disabled={sending || !gmailConfig.isConnected}
+                disabled={sending || !gmailConfig.isConnected || selectedIds.size === 0}
               >
-                {sending ? <span className="spinner" style={{ width: '14px', height: '14px' }}></span> : <><i className="fa-solid fa-paper-plane"></i> 전체 발송</>}
+                {sending ? <span className="spinner" style={{ width: '14px', height: '14px' }}></span> : <><i className="fa-solid fa-paper-plane"></i> {selectedIds.size === emails.length ? '전체 발송' : `${selectedIds.size}명에게 발송`}</>}
               </button>
             </div>
           </div>
@@ -359,7 +449,7 @@ const NewsletterPage = () => {
             <div style={{ padding: '14px', background: 'var(--ink3)', borderRadius: '12px', border: '1px dashed var(--line)' }}>
               <div style={{ fontSize: '.75rem', fontWeight: 700, color: 'var(--head)', marginBottom: '4px' }}>발송 정보 확인</div>
               <ul style={{ fontSize: '.7rem', color: 'var(--muted)', listStyle: 'disc', paddingLeft: '16px' }}>
-                <li>총 {emails.length}명의 구독자에게 발송됩니다.</li>
+                <li>총 {selectedIds.size}명의 선택된 구독자에게 발송됩니다.</li>
                 <li>Gmail 서버를 통해 안전하게 개별 발송 처리됩니다.</li>
                 <li>발송 후 관리자 로그에 기록이 남습니다.</li>
               </ul>

@@ -20,10 +20,47 @@ const LOCAL_DATA_KEY = 'songdo_local_data';
 const SYSTEM_SETTINGS_KEY = 'songdo_system_settings';
 
 const DEFAULT_SETTINGS = {
+  admin_page_name: 'SONGDO ADMIN',
   busker_deposit: 50000,
   seller_booth_fee: 30000,
   deposit_bank: '신한은행',
   deposit_account: '110-123-456789'
+};
+
+const normalizeAdminProfiles = (profiles: any[] = []) => {
+  // 마스터관리자 고정 계정 (항상 목록에 포함, 역할 고정)
+  const masterAdminProfile = {
+    id: 'master-admin',
+    name: '마스터관리자',
+    email: 'doll25@naver.com',
+    password: '@1234',
+    role: 'master_admin',
+    status: 'active',
+    last_login: new Date().toISOString(),
+    created_at: '2024-01-01'
+  };
+
+  // profiles에 마스터관리자가 없으면 맨 앞에 추가
+  const hasMasterAdmin = profiles.some(
+    (p: any) => String(p.email || '').trim().toLowerCase() === 'doll25@naver.com' || p.id === 'master-admin'
+  );
+  const base = hasMasterAdmin ? profiles : [masterAdminProfile, ...profiles];
+
+  return base.map((profile: any) => {
+    const normalizedEmail = String(profile?.email || '').trim().toLowerCase();
+    // 마스터관리자 계정은 항상 master_admin 역할 고정 (외부에서 변경 불가)
+    if (normalizedEmail === 'doll25@naver.com' || profile.id === 'master-admin') {
+      return {
+        ...profile,
+        id: 'master-admin',
+        name: profile.name || '마스터관리자',
+        password: '@1234',
+        role: 'master_admin',
+        status: 'active',
+      };
+    }
+    return profile;
+  });
 };
 
 const MOCK_DATA = {
@@ -158,22 +195,25 @@ const normalizePoolRecord = (type: 'busker' | 'seller', source: any, existing: a
   };
 };
 
-const isMissingColumnError = (error: any, column: string) =>
-  Boolean(error?.message && String(error.message).includes(`'${column}' column`));
+const isMissingColumnError = (error: any, column: string) => {
+  if (!error?.message) return false;
+  const msg = String(error.message).toLowerCase();
+  return msg.includes(`column "${column.toLowerCase()}" does not exist`) || 
+         msg.includes(`Could not find the ${column.toLowerCase()}' column`) ||
+         msg.includes(`'${column.toLowerCase()}' column`) ||
+         msg.includes(`column "${column.toLowerCase()}" of relation`);
+};
 
-const isMissingTableError = (error: any, table: string) =>
-  Boolean(
-    error?.message &&
-    (
-      String(error.message).includes(`'${table}'`) ||
-      String(error.message).includes(table)
-    ) &&
-    (
-      String(error.message).includes('relation') ||
-      String(error.message).includes('schema cache') ||
-      String(error.message).includes('Could not find the table')
-    )
-  );
+const isMissingTableError = (error: any, table: string) => {
+  if (!error?.message) return false;
+  const msg = String(error.message).toLowerCase();
+  const t = table.toLowerCase();
+  return (msg.includes(`relation "${t}" does not exist`) || 
+          msg.includes(`could not find the table "${t}"`) ||
+          msg.includes(`'${t}'`) ||
+          msg.includes(t)) && 
+         (msg.includes('relation') || msg.includes('schema cache') || msg.includes('table'));
+};
 
 const omitColumn = (value: any, column: string) => {
   if (Array.isArray(value)) {
@@ -192,7 +232,7 @@ const omitColumn = (value: any, column: string) => {
 const SAMPLE_RESET_TARGETS = [
   { table: 'buskers', lockId: '00000000-0000-0000-0000-000000000000', optional: false },
   { table: 'sellers', lockId: '00000000-0000-0000-0000-000000000000', optional: false },
-  { table: 'revenue', lockId: '00000000-0000-0000-0000-000000000000', optional: false },
+  { table: 'revenue', lockId: '00000000-0000-0000-0000-000000000000', optional: true },
   { table: 'events', lockId: '00000000-0000-0000-0000-000000000000', optional: false },
   { table: 'images', lockId: 'seed-lock-id', optional: false },
   { table: 'busker_pool', lockId: 'pool-seed-lock', optional: false },
@@ -380,7 +420,14 @@ export const DB = {
       this.setLocalData(table, updatedPool);
       
       if (this.isConfigured()) {
-        await supabase.from(table).update(updatedData).eq('id', exists.id);
+        let res = await supabase.from(table).update(updatedData).eq('id', exists.id);
+        if (res.error && (isMissingColumnError(res.error, 'birth_date') || isMissingColumnError(res.error, 'organization'))) {
+          let cleanPayload = { ...updatedData };
+          if (isMissingColumnError(res.error, 'birth_date')) cleanPayload = omitColumn(cleanPayload, 'birth_date');
+          if (isMissingColumnError(res.error, 'organization')) cleanPayload = omitColumn(cleanPayload, 'organization');
+          res = await supabase.from(table).update(cleanPayload).eq('id', exists.id);
+        }
+        return { success: !res.error, is_new: false, error: res.error };
       }
       return { success: true, is_new: false };
     } else {
@@ -395,7 +442,14 @@ export const DB = {
       this.setLocalData(table, [newData, ...pool]);
       
       if (this.isConfigured()) {
-        await supabase.from(table).insert([newData]);
+        let res = await supabase.from(table).insert([newData]);
+        if (res.error && (isMissingColumnError(res.error, 'birth_date') || isMissingColumnError(res.error, 'organization'))) {
+          let cleanPayload = { ...newData };
+          if (isMissingColumnError(res.error, 'birth_date')) cleanPayload = omitColumn(cleanPayload, 'birth_date');
+          if (isMissingColumnError(res.error, 'organization')) cleanPayload = omitColumn(cleanPayload, 'organization');
+          res = await supabase.from(table).insert([cleanPayload]);
+        }
+        return { success: !res.error, is_new: true, error: res.error };
       }
       return { success: true, is_new: true };
     }
@@ -418,7 +472,13 @@ export const DB = {
       this.setLocalData(table, updatedPool);
 
       if (this.isConfigured()) {
-        await supabase.from(table).update(updatedData).eq('id', exists.id);
+        let res = await supabase.from(table).update(updatedData).eq('id', exists.id);
+        if (res.error && (isMissingColumnError(res.error, 'birth_date') || isMissingColumnError(res.error, 'organization'))) {
+          let cleanPayload = { ...updatedData };
+          if (isMissingColumnError(res.error, 'birth_date')) cleanPayload = omitColumn(cleanPayload, 'birth_date');
+          if (isMissingColumnError(res.error, 'organization')) cleanPayload = omitColumn(cleanPayload, 'organization');
+          res = await supabase.from(table).update(cleanPayload).eq('id', exists.id);
+        }
       }
       return { success: true, is_new: false };
     }
@@ -433,7 +493,13 @@ export const DB = {
     this.setLocalData(table, [newData, ...pool]);
 
     if (this.isConfigured()) {
-      await supabase.from(table).insert([newData]);
+      let res = await supabase.from(table).insert([newData]);
+      if (res.error && (isMissingColumnError(res.error, 'birth_date') || isMissingColumnError(res.error, 'organization'))) {
+        let cleanPayload = { ...newData };
+        if (isMissingColumnError(res.error, 'birth_date')) cleanPayload = omitColumn(cleanPayload, 'birth_date');
+        if (isMissingColumnError(res.error, 'organization')) cleanPayload = omitColumn(cleanPayload, 'organization');
+        res = await supabase.from(table).insert([cleanPayload]);
+      }
     }
     return { success: true, is_new: true };
   },
@@ -664,8 +730,11 @@ export const DB = {
 
     if (this.isConfigured() && !id.startsWith('b') && !id.startsWith('temp_')) {
       let res = await supabase.from('buskers').update(payload).eq('id', id).select().single();
-      if (res.error && isMissingColumnError(res.error, 'rejection_reason')) {
-        res = await supabase.from('buskers').update(omitColumn(payload, 'rejection_reason')).eq('id', id).select().single();
+      if (res.error && (isMissingColumnError(res.error, 'rejection_reason') || isMissingColumnError(res.error, 'birth_date'))) {
+        let cleanPayload = { ...payload };
+        if (isMissingColumnError(res.error, 'rejection_reason')) cleanPayload = omitColumn(cleanPayload, 'rejection_reason');
+        if (isMissingColumnError(res.error, 'birth_date')) cleanPayload = omitColumn(cleanPayload, 'birth_date');
+        res = await supabase.from('buskers').update(cleanPayload).eq('id', id).select().single();
       }
       return res;
     }
@@ -680,8 +749,11 @@ export const DB = {
 
     if (this.isConfigured() && !id.startsWith('s') && !id.startsWith('temp_')) {
       let res = await supabase.from('sellers').update(payload).eq('id', id).select().single();
-      if (res.error && isMissingColumnError(res.error, 'rejection_reason')) {
-        res = await supabase.from('sellers').update(omitColumn(payload, 'rejection_reason')).eq('id', id).select().single();
+      if (res.error && (isMissingColumnError(res.error, 'rejection_reason') || isMissingColumnError(res.error, 'birth_date'))) {
+        let cleanPayload = { ...payload };
+        if (isMissingColumnError(res.error, 'rejection_reason')) cleanPayload = omitColumn(cleanPayload, 'rejection_reason');
+        if (isMissingColumnError(res.error, 'birth_date')) cleanPayload = omitColumn(cleanPayload, 'birth_date');
+        res = await supabase.from('sellers').update(cleanPayload).eq('id', id).select().single();
       }
       return res;
     }
@@ -697,8 +769,11 @@ export const DB = {
 
     if (this.isConfigured() && !id.startsWith('b') && !id.startsWith('s') && !id.startsWith('temp_')) {
       let res = await supabase.from(table).update(payload).eq('id', id);
-      if (res.error && isMissingColumnError(res.error, 'rejection_reason')) {
-        res = await supabase.from(table).update(omitColumn(payload, 'rejection_reason')).eq('id', id);
+      if (res.error && (isMissingColumnError(res.error, 'rejection_reason') || isMissingColumnError(res.error, 'birth_date'))) {
+        let cleanPayload = { ...payload };
+        if (isMissingColumnError(res.error, 'rejection_reason')) cleanPayload = omitColumn(cleanPayload, 'rejection_reason');
+        if (isMissingColumnError(res.error, 'birth_date')) cleanPayload = omitColumn(cleanPayload, 'birth_date');
+        res = await supabase.from(table).update(cleanPayload).eq('id', id);
       }
       return res;
     }
@@ -726,8 +801,11 @@ export const DB = {
     if (this.isConfigured()) {
       try {
         let res = await supabase.from('buskers').insert([payload]).select().single();
-        if (res.error && isMissingColumnError(res.error, 'rejection_reason')) {
-          res = await supabase.from('buskers').insert([omitColumn(payload, 'rejection_reason')]).select().single();
+        if (res.error && (isMissingColumnError(res.error, 'rejection_reason') || isMissingColumnError(res.error, 'birth_date'))) {
+          let cleanPayload = { ...payload };
+          if (isMissingColumnError(res.error, 'rejection_reason')) cleanPayload = omitColumn(cleanPayload, 'rejection_reason');
+          if (isMissingColumnError(res.error, 'birth_date')) cleanPayload = omitColumn(cleanPayload, 'birth_date');
+          res = await supabase.from('buskers').insert([cleanPayload]).select().single();
         }
         if (res.error) {
           this.enqueue({ type: 'create', table: 'buskers', payload: newItem });
@@ -758,8 +836,11 @@ export const DB = {
     if (this.isConfigured()) {
       try {
         let res = await supabase.from('sellers').insert([payload]).select().single();
-        if (res.error && isMissingColumnError(res.error, 'rejection_reason')) {
-          res = await supabase.from('sellers').insert([omitColumn(payload, 'rejection_reason')]).select().single();
+        if (res.error && (isMissingColumnError(res.error, 'rejection_reason') || isMissingColumnError(res.error, 'birth_date'))) {
+          let cleanPayload = { ...payload };
+          if (isMissingColumnError(res.error, 'rejection_reason')) cleanPayload = omitColumn(cleanPayload, 'rejection_reason');
+          if (isMissingColumnError(res.error, 'birth_date')) cleanPayload = omitColumn(cleanPayload, 'birth_date');
+          res = await supabase.from('sellers').insert([cleanPayload]).select().single();
         }
         if (res.error) {
           this.enqueue({ type: 'create', table: 'sellers', payload: newItem });
@@ -1006,17 +1087,15 @@ export const DB = {
       try {
         const { data, error } = await supabase.from('admin_profiles').select('*').order('created_at', { ascending: false });
         if (!error && data) {
-          const merged = mergeRecordsById(data, local || []);
+          const merged = normalizeAdminProfiles(mergeRecordsById(data, local || []));
           this.setLocalData('admin_profiles', merged);
           return merged;
         }
       } catch (e) { console.error(e); }
     }
-    return local || [
-      { id: 'u1', name: '김슈퍼', email: 'super@songdo.com', role: 'super_admin', status: 'active', last_login: '2025-03-04T09:12:00Z', created_at: '2024-01-01' },
-      { id: 'u2', name: '이관리', email: 'admin@songdo.com', role: 'admin', status: 'active', last_login: '2025-03-03T18:44:00Z', created_at: '2024-03-15' },
-      { id: 'u3', name: '박운영', email: 'ops1@songdo.com', role: 'operator', status: 'active', last_login: '2025-03-04T08:30:00Z', created_at: '2024-06-01' },
-    ];
+    const normalized = normalizeAdminProfiles(local || []);
+    this.setLocalData('admin_profiles', normalized);
+    return normalized;
   },
 
   async updateAdminProfile(id: string, payload: any) {
@@ -1095,9 +1174,16 @@ export const DB = {
       }
     }
 
-    if (email === 'admin@example.com' && password === 'password123') {
-      return { data: { user: { id: 'demo-user', email: 'admin@example.com', user_metadata: { name: '관리자', role: 'super_admin' } } }, error: null };
+    // 마스터관리자 고정 계정 (로컬 프로필에 아직 저장 안 된 경우 폴백)
+    if (normalizedEmail === 'doll25@naver.com' && password === '@1234') {
+      return { data: { user: { id: 'master-admin', email: 'doll25@naver.com', user_metadata: { name: '마스터관리자', role: 'master_admin' } } }, error: null };
     }
+
+    // 데모 체험 계정
+    if (normalizedEmail === 'demo@songdo.com' && password === 'demo1234') {
+      return { data: { user: { id: 'demo-user', email: 'demo@songdo.com', user_metadata: { name: '데모계정', role: 'operator' } } }, error: null };
+    }
+
     return { data: null, error: { message: '로그인 정보를 확인하세요.' } };
   },
 
@@ -1123,16 +1209,45 @@ export const DB = {
 
   async updateImage(id: string, payload: any) {
     const local = this.getStoredLocalData('images');
-    const exists = local.some((item: any) => item.id === id);
-    const updated = exists
-      ? local.map((item: any) => item.id === id ? { ...item, ...payload } : item)
-      : [...local, { id, active: true, ...payload }];
+    const existing = local.find((item: any) => item.id === id);
+    
+    // URL이 null이거나 undefined인 경우 기존 값 유지 (NOT NULL 제약 조건 보호)
+    const finalPayload = { ...existing, ...payload, id, active: true };
+    if (!finalPayload.url && existing?.url) {
+      finalPayload.url = existing.url;
+    }
+
+    const updated = existing
+      ? local.map((item: any) => item.id === id ? finalPayload : item)
+      : [...local, finalPayload];
+    
     this.setLocalData('images', updated);
+    this.cacheClear();
     
     if (this.isConfigured()) {
-      return await supabase.from('images').upsert([{ id, active: true, ...payload }]).select().single();
+      let res = await supabase.from('images').upsert([finalPayload]).select().single();
+      
+      // 여러 컬럼이 누락되었을 경우를 대비한 반복 시도 로직
+      const possibleMissingColumns = ['colSpan', 'rowSpan', 'minHeight', 'caption'];
+      let cleanPayload = { ...finalPayload };
+      let attempt = 0;
+
+      while (res.error && attempt < possibleMissingColumns.length) {
+        let foundMissing = false;
+        for (const col of possibleMissingColumns) {
+          if (isMissingColumnError(res.error, col)) {
+            const { [col]: _removed, ...rest } = cleanPayload;
+            cleanPayload = rest;
+            foundMissing = true;
+          }
+        }
+        if (!foundMissing) break;
+        res = await supabase.from('images').upsert([cleanPayload]).select().single();
+        attempt++;
+      }
+      return res;
     }
-    return { data: payload, error: null };
+    return { data: finalPayload, error: null };
   },
   
   async getUser() {
@@ -1193,7 +1308,7 @@ export const DB = {
     const insertJobs = [
       { table: 'buskers', rows: bData, optional: false },
       { table: 'sellers', rows: sData, optional: false },
-      { table: 'revenue', rows: rData, optional: false },
+      { table: 'revenue', rows: rData, optional: true },
       { table: 'events', rows: eData, optional: false },
       { table: 'images', rows: iData, optional: false },
       { table: 'busker_pool', rows: bpData, optional: false },
@@ -1208,13 +1323,25 @@ export const DB = {
         if (rows.length === 0) return { data: [], error: null };
 
         let res = await supabase.from(table).insert(rows);
-        if (
-          res.error &&
-          isMissingColumnError(res.error, 'rejection_reason') &&
-          (table === 'buskers' || table === 'sellers')
-        ) {
-          res = await supabase.from(table).insert(omitColumn(rows, 'rejection_reason'));
+        
+        // Handle missing columns (rejection_reason, birth_date, etc.)
+        const possibleMissingColumns = ['rejection_reason', 'birth_date', 'organization', 'colSpan', 'rowSpan', 'minHeight', 'caption'];
+        let cleanRows = [...rows];
+        let attempt = 0;
+        
+        while (res.error && attempt < possibleMissingColumns.length) {
+          let foundMissing = false;
+          for (const col of possibleMissingColumns) {
+            if (isMissingColumnError(res.error, col)) {
+              cleanRows = omitColumn(cleanRows, col);
+              foundMissing = true;
+            }
+          }
+          if (!foundMissing) break;
+          res = await supabase.from(table).insert(cleanRows);
+          attempt++;
         }
+
         if (optional && res.error && isMissingTableError(res.error, table)) {
           return { data: null, error: null };
         }

@@ -42,8 +42,8 @@ export default function BuskerSection() {
         <div className="absolute inset-0 bg-gradient-to-b from-white/20 via-transparent to-white/60"></div>
       </div>
 
-      <div className="relative z-10 h-full max-w-7xl mx-auto px-6 flex flex-col items-center justify-center text-center pb-32 md:pb-40">
-        <AnimateOnScroll direction="up" className="relative mb-6 md:mb-8">
+      <div className="relative z-10 h-full max-w-7xl mx-auto px-6 flex flex-col items-center justify-center text-center pt-24 md:pt-32 pb-40 md:pb-48">
+        <AnimateOnScroll direction="up" className="relative mb-10 md:mb-14">
           <h3
             className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-7xl md:text-9xl font-black text-[#2C2C2C] lowercase opacity-[0.03] select-none pointer-events-none whitespace-nowrap"
             style={{ fontFamily: '"Noto Sans KR", sans-serif' }}
@@ -61,7 +61,7 @@ export default function BuskerSection() {
           </p>
         </AnimateOnScroll>
 
-        <AnimateOnScroll direction="up" delay={0.2} className="mb-6 md:mb-8">
+        <AnimateOnScroll direction="up" delay={0.2} className="w-full flex justify-center mb-12 md:mb-16">
           <button
             className="group flex items-center gap-3 sm:gap-4 px-8 py-4 sm:px-10 sm:py-5 bg-[#2C2C2C] rounded-full cursor-pointer whitespace-nowrap shadow-xl hover:scale-105 transition-all"
             onClick={handleApplyClick}
@@ -78,7 +78,7 @@ export default function BuskerSection() {
           </button>
         </AnimateOnScroll>
 
-        <AnimateOnScroll direction="up" delay={0.3}>
+        <AnimateOnScroll direction="up" delay={0.3} className="max-w-2xl">
           <p
             className="text-[#2C2C2C] text-base sm:text-xl md:text-2xl font-bold mb-1 md:mb-2 drop-shadow-sm"
             style={{ fontFamily: '"Noto Sans KR", sans-serif' }}

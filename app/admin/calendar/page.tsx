@@ -86,6 +86,47 @@ const CalendarPage = () => {
     }
   };
 
+  const downloadMonthlyCSV = () => {
+    const mStr = `${calY}-${String(calM + 1).padStart(2, '0')}`;
+    const monthlyEvents = events.filter(e => e.event_date.startsWith(mStr));
+    
+    if (monthlyEvents.length === 0) {
+      toast(`${calY}년 ${calM + 1}월에 등록된 행사가 없습니다.`, 'sky');
+      return;
+    }
+
+    const headers = ['날짜', '행사명', '버스커(예정)', '버스커(승인)', '셀러(예정)', '셀러(승인)', '비고'];
+    const rows = monthlyEvents.map(e => {
+      const liveBk = getApprovedBuskersByDate(e.event_date).length;
+      const liveSk = getApprovedSellersByDate(e.event_date).length;
+      
+      const row = [
+        e.event_date,
+        e.title,
+        e.busker_count,
+        liveBk,
+        e.seller_count,
+        liveSk,
+        e.note || ''
+      ];
+      
+      return row.map(val => {
+        const str = String(val);
+        return str.includes(',') ? `"${str}"` : str;
+      }).join(',');
+    });
+
+    const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' + [headers.join(','), ...rows].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `행사일정_${mStr}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast(`${calY}년 ${calM + 1}월 행사 일정을 다운로드합니다.`, 'jade');
+  };
+
   const nav = (dir: number) => {
     if (dir === 0) { setCalY(new Date().getFullYear()); setCalM(new Date().getMonth()); return; }
     let nm = calM + dir, ny = calY;
@@ -233,6 +274,10 @@ const CalendarPage = () => {
                 {calY}년 {MONTHS_KR[calM]}
               </div>
               <div className="cal-nav-btns">
+                <button className="btn btn-ghost" style={{ fontSize: '.75rem', padding: '0 10px', height: '32px' }} onClick={downloadMonthlyCSV}>
+                  <i className="fa-solid fa-file-csv" style={{ color: 'var(--jade)', marginRight: '5px' }} />
+                  CSV
+                </button>
                 <button className="cal-nav-btn" onClick={() => nav(-1)}>
                   <i className="fa-solid fa-chevron-left" />
                 </button>

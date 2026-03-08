@@ -12,12 +12,18 @@ const Sidebar = () => {
   const router = useRouter();
   const { user, role, can } = useAdmin();
   const [userName, setUserName] = useState('관리자');
+  const [adminPageName, setAdminPageName] = useState('SONGDO ADMIN');
 
   useEffect(() => {
     if (user) {
       setUserName(user.user_metadata?.name || user.email?.split('@')[0] || '관리자');
     }
   }, [user]);
+
+  useEffect(() => {
+    const settings = DB.getSystemSettings();
+    setAdminPageName(settings.admin_page_name || 'SONGDO ADMIN');
+  }, []);
 
   const handleLogout = async () => {
     if (confirm('로그아웃 하시겠습니까?')) {
@@ -46,11 +52,12 @@ const Sidebar = () => {
     { group: '홈페이지 관리', items: [
       { name: '홈페이지 팝업 관리', icon: 'fa-window-maximize', path: '/admin/popups', perm: 'view_all' },
       { name: '뉴스레터 발송', icon: 'fa-paper-plane', path: '/admin/newsletter', perm: 'system_settings' },
-      { name: '자주 묻는 질문', icon: 'fa-circle-question', path: '/admin/faq', perm: 'system_settings' }
+      { name: '자주 묻는 질문', icon: 'fa-circle-question', path: '/admin/faq', perm: 'system_settings' },
+      { name: '홈페이지 이미지관리', icon: 'fa-images', path: '/admin/settings/homepage-images', perm: 'system_settings' }
     ]},
     { group: '시스템', items: [
-      { name: '계정 관리', icon: 'fa-users-gear', path: '/admin/accounts', perm: 'manage_accounts' },
-      { name: 'Supabase 연동', icon: 'fa-database', path: '/admin/supabase', perm: 'system_settings' },
+      { name: '계정 관리', icon: 'fa-users-gear', path: '/admin/accounts', perm: 'account_access' },
+      { name: 'Supabase 연동', icon: 'fa-database', path: '/admin/supabase', perm: 'supabase_access', hideUnlessCan: true },
       { name: '설정', icon: 'fa-gear', path: '/admin/settings', perm: 'system_settings' }
     ]}
   ];
@@ -62,7 +69,7 @@ const Sidebar = () => {
       <div className="sb-brand">
         <div className="sb-gem">⛺</div>
         <div>
-          <div className="sb-name">SONGDO ADMIN</div>
+          <div className="sb-name">{adminPageName}</div>
           <div className="sb-tag">Supabase Edition</div>
         </div>
       </div>
@@ -70,13 +77,14 @@ const Sidebar = () => {
         {navItems.map((group, idx) => (
           <React.Fragment key={idx}>
             <div className="sb-group">{group.group}</div>
-            {group.items.map((item, i) => {
+            {group.items.filter((item: any) => !(item.hideUnlessCan && !can(item.perm))).map((item, i) => {
               const isLocked = !can(item.perm);
+              const isActive = pathname === item.path || (item.path !== '/admin/settings' && pathname.startsWith(item.path + '/'));
               return (
                 <Link 
                   key={i} 
                   href={isLocked ? '#' : item.path} 
-                  className={`sb-link ${pathname === item.path ? 'on' : ''} ${isLocked ? 'nav-locked' : ''}`}
+                  className={`sb-link ${isActive ? 'on' : ''} ${isLocked ? 'nav-locked' : ''}`}
                   onClick={(e) => { if (isLocked) e.preventDefault(); }}
                 >
                   <i className={`fa-solid ${item.icon}`}></i>

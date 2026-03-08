@@ -4,6 +4,7 @@
 import React, { useState } from 'react';
 import { DB } from '@/lib/supabase';
 import { useToast } from './Toast';
+import { useAdmin } from '@/app/admin/layout';
 
 interface AddAccountModalProps {
   isOpen: boolean;
@@ -13,8 +14,15 @@ interface AddAccountModalProps {
 
 const AddAccountModal = ({ isOpen, onClose, onSuccess }: AddAccountModalProps) => {
   const { toast } = useToast();
+  const { can } = useAdmin();
   const [formData, setFormData] = useState({ name: '', email: '', role: 'operator', password: '' });
   const [loading, setLoading] = useState(false);
+  const roleOptions = [
+    { k: 'master_admin', l: '마스터관리자', c: 'var(--coral)', d: '최상위 권한 + 슈퍼관리자 생성', icon: 'fa-user-tie', hidden: true },
+    { k: 'super_admin', l: '슈퍼관리자', c: 'var(--jade)', d: '모든 권한 + 계정 관리', icon: 'fa-crown', hidden: !can('create_super_admin') },
+    { k: 'admin', l: '관리자', c: 'var(--sky)', d: '계정 관리 제외 운영', icon: 'fa-user-shield', hidden: false },
+    { k: 'operator', l: '운영자', c: 'var(--lav)', d: '승인/거절만 가능', icon: 'fa-user-check', hidden: false }
+  ].filter((role) => !role.hidden);
 
   if (!isOpen) return null;
 
@@ -88,12 +96,8 @@ const AddAccountModal = ({ isOpen, onClose, onSuccess }: AddAccountModalProps) =
 
           <div className="fg" style={{ marginBottom: '13px' }}>
             <label style={{ marginBottom: '8px', display: 'block' }}>역할 선택 *</label>
-            <div className="role-sel-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '7px' }}>
-              {[
-                { k: 'super_admin', l: '슈퍼관리자', c: 'var(--jade)', d: '모든 권한 + 계정 관리' },
-                { k: 'admin', l: '관리자', c: 'var(--sky)', d: '계정 관리 제외 운영' },
-                { k: 'operator', l: '운영자', c: 'var(--lav)', d: '승인/거절만 가능' }
-              ].map(r => (
+            <div className="role-sel-grid" style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(roleOptions.length, 3)}, 1fr)`, gap: '7px' }}>
+              {roleOptions.map(r => (
                 <div 
                   key={r.k} 
                   onClick={() => setRole(r.k)}
@@ -104,7 +108,7 @@ const AddAccountModal = ({ isOpen, onClose, onSuccess }: AddAccountModalProps) =
                   }}
                 >
                   <div style={{ fontSize: '.8rem', fontWeight: 700, color: 'var(--head)', marginBottom: '2px' }}>
-                    <i className={`fa-solid ${r.k === 'super_admin' ? 'fa-crown' : r.k === 'admin' ? 'fa-user-shield' : 'fa-user-check'}`} style={{ color: r.c, marginRight: '5px' }}></i>
+                    <i className={`fa-solid ${r.icon}`} style={{ color: r.c, marginRight: '5px' }}></i>
                     {r.l}
                   </div>
                   <div style={{ fontSize: '.65rem', color: 'var(--muted)', lineHeight: 1.4 }}>{r.d}</div>

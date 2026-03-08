@@ -24,7 +24,7 @@ const KpiRow = ({ stats }: { stats: any }) => {
   const kpis = [
     { label: '전체 신청', value: stats.total ?? 0, sub: '누적', trend: '계속 증가 중', color: 'var(--jade)', icon: 'fa-file-pen' },
     { label: '승인 대기', value: stats.pending ?? 0, sub: `버스커 ${stats.pendingBuskers || 0} / 셀러 ${stats.pendingSellers || 0}`, color: 'var(--gold)', icon: 'fa-hourglass-half' },
-    { label: '이번 달 매출', value: `${stats.revenue ?? 0}만`, sub: '결제 완료 기준', trend: '+12% vs 지난달', color: 'var(--sky)', icon: 'fa-won-sign' },
+    { label: '이번 달 매출', value: `${stats.revenue ?? 0}만`, sub: '입금 및 결제 완료 기준', trend: '실시간 정산 중', color: 'var(--sky)', icon: 'fa-won-sign' },
     { label: '다음 행사', value: stats.nextEventDays || '—', sub: stats.nextEventDate || '—', color: 'var(--lav)', icon: 'fa-calendar' },
   ];
 
