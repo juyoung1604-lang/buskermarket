@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.songdo.auto-git-sync</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>/Users/richard/Desktop/AI유튜브수익화프로젝트/songdo/scripts/auto-git-sync.sh</string>
+    <string>chore: auto sync source updates</string>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>/Users/richard/Desktop/AI유튜브수익화프로젝트/songdo</string>
+
+  <key>StartInterval</key>
+  <integer>1800</integer>
+
+  <key>RunAtLoad</key>
+  <true/>
+
+  <key>StandardOutPath</key>
+  <string>/tmp/songdo-auto-git-sync.out.log</string>
+
+  <key>StandardErrorPath</key>
+  <string>/tmp/songdo-auto-git-sync.err.log</string>
+</dict>
+</plist>
