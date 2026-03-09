@@ -520,13 +520,18 @@ export const DB = {
         : item
     );
     this.setLocalData(table, updated);
-    
+
     if (this.isConfigured()) {
       const current = local.find((item: any) => item.id === id) || {};
-      return await supabase
-        .from(table)
-        .update({ ...normalizePoolRecord(type, { ...current, ...payload }, current), updated_at: new Date().toISOString() })
-        .eq('id', id);
+      let updatePayload = { ...normalizePoolRecord(type, { ...current, ...payload }, current), updated_at: new Date().toISOString() };
+      let res = await supabase.from(table).update(updatePayload).eq('id', id);
+      if (res.error && (isMissingColumnError(res.error, 'birth_date') || isMissingColumnError(res.error, 'organization'))) {
+        let cleanPayload = { ...updatePayload };
+        if (isMissingColumnError(res.error, 'birth_date')) cleanPayload = omitColumn(cleanPayload, 'birth_date');
+        if (isMissingColumnError(res.error, 'organization')) cleanPayload = omitColumn(cleanPayload, 'organization');
+        res = await supabase.from(table).update(cleanPayload).eq('id', id);
+      }
+      return res;
     }
     return { error: null };
   },
@@ -1147,7 +1152,8 @@ export const DB = {
       } catch (e) { /* fallback */ }
     }
 
-    const profiles = this.getLocalData('admin_profiles') || [];
+    const profiles = normalizeAdminProfiles(this.getLocalData('admin_profiles') || []);
+    this.setLocalData('admin_profiles', profiles);
     const normalizedEmail = String(email || '').trim().toLowerCase();
     const localProfile = profiles.find((item: any) => String(item.email || '').trim().toLowerCase() === normalizedEmail);
 
