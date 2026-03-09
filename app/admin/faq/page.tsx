@@ -48,14 +48,16 @@ const FaqAdminPage = () => {
     setLoading(true);
     try {
       if (editingId) {
-        await DB.updateFaq(editingId, formData);
+        const result = await DB.updateFaq(editingId, formData);
+        if (result?.error) throw result.error;
         toast('수정되었습니다.', 'jade');
       } else {
-        await DB.createFaq(formData);
+        const result = await DB.createFaq(formData);
+        if (result?.error) throw result.error;
         toast('등록되었습니다.', 'jade');
       }
       handleCancel();
-      fetchFaqs();
+      await fetchFaqs();
     } catch (err: any) {
       toast('오류 발생: ' + err.message, 'rose');
     } finally {
@@ -66,9 +68,13 @@ const FaqAdminPage = () => {
   const handleDelete = async (id: string) => {
     if (!canManage) return;
     if (!confirm('정말 삭제하시겠습니까?')) return;
-    await DB.deleteFaq(id);
+    const result = await DB.deleteFaq(id);
+    if (result?.error) {
+      toast('삭제 실패: ' + result.error.message, 'rose');
+      return;
+    }
     toast('삭제되었습니다.', 'sky');
-    fetchFaqs();
+    await fetchFaqs();
   };
 
   const moveItem = async (index: number, direction: 'up' | 'down') => {
@@ -79,7 +85,12 @@ const FaqAdminPage = () => {
 
     [newFaqs[index], newFaqs[targetIndex]] = [newFaqs[targetIndex], newFaqs[index]];
     setFaqs(newFaqs);
-    await DB.reorderFaqs(newFaqs.map(f => f.id));
+    const result = await DB.reorderFaqs(newFaqs.map(f => f.id));
+    if (result?.error) {
+      toast('순서 저장 실패: ' + result.error.message, 'rose');
+      await fetchFaqs();
+      return;
+    }
     toast('순서가 변경되었습니다.', 'jade');
   };
 

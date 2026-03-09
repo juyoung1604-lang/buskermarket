@@ -503,7 +503,7 @@ export const DB = {
 
   // FAQ
   async getFaqs() {
-    const local = this.getLocalData('faqs');
+    const local = this.getStoredLocalData('faqs');
     if (this.isConfigured()) {
       try {
         const { data, error } = await supabase.from('faqs').select('*').order('order_seq', { ascending: true });
@@ -511,55 +511,76 @@ export const DB = {
           this.setLocalData('faqs', data);
           return data;
         }
+        if (error) throw error;
       } catch (e) { console.error(e); }
+      return local || [];
     }
-    return local || MOCK_DATA.faqs;
+    return (local && local.length > 0) ? local : MOCK_DATA.faqs;
   },
 
   async updateFaq(id: string, payload: any) {
     const list = await this.getFaqs();
     const updated = list.map((f: any) => f.id === id ? { ...f, ...payload } : f);
-    this.setLocalData('faqs', updated);
-    
+
     if (this.isConfigured()) {
-      return await supabase.from('faqs').update(payload).eq('id', id);
+      const result = await supabase.from('faqs').update(payload).eq('id', id);
+      if (!result.error) this.setLocalData('faqs', updated);
+      return result;
     }
+    this.setLocalData('faqs', updated);
     return { error: null };
   },
 
   async createFaq(payload: any) {
     const list = await this.getFaqs();
     const newItem = { id: 'faq_' + Date.now(), ...payload, order_seq: list.length + 1 };
-    this.setLocalData('faqs', [...list, newItem]);
-    
+
     if (this.isConfigured()) {
-      return await supabase.from('faqs').insert([payload]);
+      const result = await supabase.from('faqs').insert([
+        {
+          ...payload,
+          order_seq: payload?.order_seq || list.length + 1,
+        },
+      ]);
+      if (!result.error) {
+        const refreshed = await this.getFaqs();
+        this.setLocalData('faqs', refreshed);
+      }
+      return result;
     }
+    this.setLocalData('faqs', [...list, newItem]);
     return { data: newItem, error: null };
   },
 
   async deleteFaq(id: string) {
-    const list = this.getLocalData('faqs') || [];
-    this.setLocalData('faqs', list.filter((f: any) => f.id !== id));
+    const list = this.getStoredLocalData('faqs') || [];
     if (this.isConfigured()) {
-      return await supabase.from('faqs').delete().eq('id', id);
+      const result = await supabase.from('faqs').delete().eq('id', id);
+      if (!result.error) {
+        this.setLocalData('faqs', list.filter((f: any) => f.id !== id));
+      }
+      return result;
     }
+    this.setLocalData('faqs', list.filter((f: any) => f.id !== id));
     return { error: null };
   },
 
   async reorderFaqs(orderedIds: string[]) {
-    const list = this.getLocalData('faqs') || [];
+    const list = this.getStoredLocalData('faqs') || [];
     const reordered = orderedIds.map((id, idx) => {
       const item = list.find((f: any) => f.id === id);
       return { ...item, order_seq: idx + 1 };
     });
-    this.setLocalData('faqs', reordered);
-    
+
     if (this.isConfigured()) {
       for (const item of reordered) {
-        await supabase.from('faqs').update({ order_seq: item.order_seq }).eq('id', item.id);
+        const result = await supabase.from('faqs').update({ order_seq: item.order_seq }).eq('id', item.id);
+        if (result.error) return { success: false, error: result.error };
       }
+      this.setLocalData('faqs', reordered);
+      return { success: true, error: null };
     }
+    this.setLocalData('faqs', reordered);
     return { success: true };
   },
 
@@ -848,10 +869,11 @@ export const DB = {
     return local.filter((item: any) => typeof item?.id === 'string' && item.id.startsWith('temp_'));
   },
   setLocalData(table: string, data: any) {
-    if (this.isServerBacked()) return;
+    // 서버가 연결되어 있어도 로컬 캐시로 저장합니다. (오프라인/로딩 fallback용)
     const all = memoryStore[LOCAL_DATA_KEY] || {};
     all[table] = data;
     memoryStore[LOCAL_DATA_KEY] = all;
+    saveToLocalStorage();
   },
 
   // OFFLINE QUEUE
@@ -1370,38 +1392,60 @@ export const DB = {
 
   // IMAGES
   async getImages() {
-    // 이미지의 경우 즉시 반영이 중요하므로 30분 캐시를 건너뜁니다.
+    // 1. 우선 메모리/로컬 저장소 확인
     const local = this.getStoredLocalData('images');
+    
     if (this.isConfigured()) {
       try {
         const { data, error } = await supabase.from('images').select('*').order('created_at', { ascending: false });
-        if (!error && data) {
+        if (!error && data && data.length > 0) {
           this.setLocalData('images', data);
+          this.cacheSet('images', data);
           return data;
         }
-      } catch (e) { console.error(e); }
+      } catch (e) { console.error('Supabase getImages error:', e); }
     }
-    return (local && local.length > 0) ? local : this.getLocalData('images');
+    
+    // 2. 서버 데이터가 없거나 로딩 중이면 로컬 캐시 반환
+    if (local && local.length > 0) return local;
+    
+    // 3. 마지막 수단으로 Mock 데이터
+    return MOCK_DATA.images;
   },
 
   async updateImage(id: string, payload: any) {
-    const local = this.getStoredLocalData('images');
+    // 1. 현재 로컬 저장소 데이터 가져오기 (없으면 Mock 데이터로 초기화하여 부분 업데이트 시 데이터 유실 방지)
+    let local = this.getStoredLocalData('images');
+    if (!local || local.length === 0) {
+      local = [...MOCK_DATA.images];
+    }
+
     const existing = local.find((item: any) => item.id === id);
     
     // URL이 null이거나 undefined인 경우 기존 값 유지 (NOT NULL 제약 조건 보호)
-    const finalPayload = { ...existing, ...payload, id, active: true };
+    const finalPayload = { 
+      ...(existing || {}), 
+      ...payload, 
+      id, 
+      active: true,
+      updated_at: new Date().toISOString()
+    };
+    
     if (!finalPayload.url && existing?.url) {
       finalPayload.url = existing.url;
     }
 
-    const updated = existing
-      ? local.map((item: any) => item.id === id ? finalPayload : item)
-      : [...local, finalPayload];
+    const updated = local.map((item: any) => item.id === id ? finalPayload : item);
+    // 만약 기존에 없던 ID라면 추가
+    if (!existing) {
+      updated.push(finalPayload);
+    }
     
     this.setLocalData('images', updated);
     this.cacheClear();
     
     if (this.isConfigured()) {
+      // Supabase 업서트 시도
       let res = await supabase.from('images').upsert([finalPayload]).select().single();
       
       // 여러 컬럼이 누락되었을 경우를 대비한 반복 시도 로직
