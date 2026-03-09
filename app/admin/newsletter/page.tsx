@@ -38,8 +38,19 @@ const NewsletterPage = () => {
   useEffect(() => {
     fetchEmails();
     fetchTemplates();
-    DB.getGmailConfig().then(setGmailConfig);
+    fetchGmailConfig();
   }, []);
+
+  const fetchGmailConfig = async () => {
+    try {
+      const response = await fetch('/api/admin/gmail-config', { cache: 'no-store' });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Gmail 설정 조회 실패');
+      setGmailConfig(result.config || { email: '', appPassword: '', isConnected: false });
+    } catch (error: any) {
+      toast('Gmail 설정 조회 실패: ' + error.message, 'rose');
+    }
+  };
 
   const fetchEmails = async () => {
     setLoading(true);
@@ -92,12 +103,17 @@ const NewsletterPage = () => {
     }
     
     const newConfig = { ...gmailConfig, isConnected: true };
-    const { error } = await DB.saveGmailConfig(newConfig);
-    if (error) {
-      toast('Gmail 설정 저장 실패: ' + error.message, 'rose');
+    const response = await fetch('/api/admin/gmail-config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newConfig),
+    });
+    const result = await response.json();
+    if (!response.ok) {
+      toast('Gmail 설정 저장 실패: ' + (result.error || 'unknown error'), 'rose');
       return;
     }
-    setGmailConfig(newConfig);
+    setGmailConfig(result.config);
     toast('Gmail 계정이 연동되었습니다.', 'jade');
   };
 
@@ -106,13 +122,13 @@ const NewsletterPage = () => {
       toast('Gmail 연동 설정은 마스터관리자만 변경할 수 있습니다.', 'rose');
       return;
     }
-    const newConfig = { email: '', appPassword: '', isConnected: false };
-    const { error } = await DB.clearGmailConfig();
-    if (error) {
-      toast('Gmail 설정 해제 실패: ' + error.message, 'rose');
+    const response = await fetch('/api/admin/gmail-config', { method: 'DELETE' });
+    const result = await response.json();
+    if (!response.ok) {
+      toast('Gmail 설정 해제 실패: ' + (result.error || 'unknown error'), 'rose');
       return;
     }
-    setGmailConfig(newConfig);
+    setGmailConfig(result.config);
     toast('연동이 해제되었습니다.', 'sky');
   };
 
@@ -228,11 +244,7 @@ const NewsletterPage = () => {
   return (
     <div className="space-y-6">
       <div className="newsletter-grid">
-        
-        {/* Left Column: List & Gmail Config */}
-        <div className="nl-left space-y-6">
-          {/* Gmail Config Card */}
-          <div className="card">
+        <div className="nl-gmail card">
             <div className="card-h">
               <span className="card-title">Gmail 연동 설정</span>
               {gmailConfig.isConnected && <span className="badge b-approved">연결됨</span>}
@@ -288,10 +300,9 @@ const NewsletterPage = () => {
                 </div>
               )}
             </div>
-          </div>
+        </div>
 
-          {/* Template Storage Card */}
-          <div className="card">
+        <div className="nl-template card">
             <div className="card-h">
               <span className="card-title">뉴스레터 템플릿</span>
               <button 
@@ -344,10 +355,54 @@ const NewsletterPage = () => {
                 ))}
               </div>
             </div>
-          </div>
+        </div>
 
-          {/* Subscriber List Card */}
-          <div className="card">
+        <div className="nl-compose card" style={{ height: 'fit-content' }}>
+          <div className="card-h">
+            <span className="card-title">뉴스레터 작성 및 발송</span>
+            <div className="flex gap-2">
+              <button 
+                className="btn btn-jade" 
+                onClick={handleSendMail} 
+                disabled={sending || !gmailConfig.isConnected || selectedIds.size === 0}
+              >
+                {sending ? <span className="spinner" style={{ width: '14px', height: '14px' }}></span> : <><i className="fa-solid fa-paper-plane"></i> {selectedIds.size === emails.length ? '전체 발송' : `${selectedIds.size}명에게 발송`}</>}
+              </button>
+            </div>
+          </div>
+          <div className="card-body space-y-4">
+            <div className="fg">
+              <label>이메일 제목</label>
+              <input 
+                className="fi" 
+                placeholder="[송도 버스킹 마켓] 이번 주말 소식을 전해드립니다!" 
+                value={compose.subject}
+                onChange={(e) => setCompose({...compose, subject: e.target.value})}
+              />
+            </div>
+            <div className="fg">
+              <label>이메일 본문 (HTML 지원)</label>
+              <textarea 
+                className="fta" 
+                style={{ height: '400px', fontFamily: 'var(--font-mono)', fontSize: '.85rem' }}
+                placeholder="안녕하세요! 이번 주말 송도 국제캠핑장에서 열리는 행사 안내입니다..."
+                value={compose.content}
+                onChange={(e) => setCompose({...compose, content: e.target.value})}
+              />
+            </div>
+            
+            <div style={{ padding: '14px', background: 'var(--ink3)', borderRadius: '12px', border: '1px dashed var(--line)' }}>
+              <div style={{ fontSize: '.75rem', fontWeight: 700, color: 'var(--head)', marginBottom: '4px' }}>발송 정보 확인</div>
+              <ul style={{ fontSize: '.7rem', color: 'var(--muted)', listStyle: 'disc', paddingLeft: '16px' }}>
+                <li>총 {selectedIds.size}명의 선택된 구독자에게 발송됩니다.</li>
+                <li>Gmail 서버를 통해 안전하게 개별 발송 처리됩니다.</li>
+                <li>발송 후 관리자 로그에 기록이 남습니다.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <div className="nl-subscribers card">
             <div className="card-h">
               <span className="card-title">구독자 명단 ({filteredEmails.length})</span>
               <button onClick={fetchEmails} className="btn btn-ghost" style={{ fontSize: '.7rem' }}>
@@ -411,55 +466,7 @@ const NewsletterPage = () => {
                 </table>
               </div>
             </div>
-          </div>
         </div>
-
-        {/* Right Column: Compose Email */}
-        <div className="nl-right card" style={{ height: 'fit-content' }}>
-          <div className="card-h">
-            <span className="card-title">뉴스레터 작성 및 발송</span>
-            <div className="flex gap-2">
-              <button 
-                className="btn btn-jade" 
-                onClick={handleSendMail} 
-                disabled={sending || !gmailConfig.isConnected || selectedIds.size === 0}
-              >
-                {sending ? <span className="spinner" style={{ width: '14px', height: '14px' }}></span> : <><i className="fa-solid fa-paper-plane"></i> {selectedIds.size === emails.length ? '전체 발송' : `${selectedIds.size}명에게 발송`}</>}
-              </button>
-            </div>
-          </div>
-          <div className="card-body space-y-4">
-            <div className="fg">
-              <label>이메일 제목</label>
-              <input 
-                className="fi" 
-                placeholder="[송도 버스킹 마켓] 이번 주말 소식을 전해드립니다!" 
-                value={compose.subject}
-                onChange={(e) => setCompose({...compose, subject: e.target.value})}
-              />
-            </div>
-            <div className="fg">
-              <label>이메일 본문 (HTML 지원)</label>
-              <textarea 
-                className="fta" 
-                style={{ height: '400px', fontFamily: 'var(--font-mono)', fontSize: '.85rem' }}
-                placeholder="안녕하세요! 이번 주말 송도 국제캠핑장에서 열리는 행사 안내입니다..."
-                value={compose.content}
-                onChange={(e) => setCompose({...compose, content: e.target.value})}
-              />
-            </div>
-            
-            <div style={{ padding: '14px', background: 'var(--ink3)', borderRadius: '12px', border: '1px dashed var(--line)' }}>
-              <div style={{ fontSize: '.75rem', fontWeight: 700, color: 'var(--head)', marginBottom: '4px' }}>발송 정보 확인</div>
-              <ul style={{ fontSize: '.7rem', color: 'var(--muted)', listStyle: 'disc', paddingLeft: '16px' }}>
-                <li>총 {selectedIds.size}명의 선택된 구독자에게 발송됩니다.</li>
-                <li>Gmail 서버를 통해 안전하게 개별 발송 처리됩니다.</li>
-                <li>발송 후 관리자 로그에 기록이 남습니다.</li>
-              </ul>
-            </div>
-          </div>
-        </div>
-
       </div>
     </div>
   );

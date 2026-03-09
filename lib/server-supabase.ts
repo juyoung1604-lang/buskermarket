@@ -30,3 +30,25 @@ export async function getServerAppSetting<T>(name: string, fallback: T): Promise
     return fallback;
   }
 }
+
+export async function saveServerAppSetting(name: string, value: any) {
+  if (!serverSupabase) {
+    return { error: { message: 'Server Supabase client is not configured.' } };
+  }
+
+  try {
+    return await serverSupabase.from(APP_SETTINGS_TABLE).upsert(
+      [
+        {
+          key: name,
+          value,
+          updated_at: new Date().toISOString(),
+        },
+      ],
+      { onConflict: 'key' }
+    );
+  } catch (error: any) {
+    console.error(error);
+    return { error };
+  }
+}
