@@ -157,6 +157,28 @@ const mergeRecordsById = (primary: any[] = [], secondary: any[] = []) =>
     return acc;
   }, []);
 
+const mergeAdminProfiles = (remoteProfiles: any[] = [], localProfiles: any[] = []) => {
+  const remoteById = new Map(
+    remoteProfiles
+      .filter((profile: any) => profile?.id)
+      .map((profile: any) => [String(profile.id), profile])
+  );
+  const remoteByEmail = new Map(
+    remoteProfiles
+      .filter((profile: any) => profile?.email)
+      .map((profile: any) => [String(profile.email).trim().toLowerCase(), profile])
+  );
+
+  const localOnlyProfiles = localProfiles.filter((profile: any) => {
+    const id = String(profile?.id || '');
+    const email = String(profile?.email || '').trim().toLowerCase();
+    if (!id && !email) return false;
+    return !remoteById.has(id) && !remoteByEmail.has(email);
+  });
+
+  return normalizeAdminProfiles([...remoteProfiles, ...localOnlyProfiles]);
+};
+
 const sanitizePoolNote = (note: any, fallback = '') => {
   const normalized = typeof note === 'string' ? note.trim() : '';
   if (!normalized) return fallback;
@@ -1092,7 +1114,7 @@ export const DB = {
       try {
         const { data, error } = await supabase.from('admin_profiles').select('*').order('created_at', { ascending: false });
         if (!error && data) {
-          const merged = normalizeAdminProfiles(mergeRecordsById(data, local || []));
+          const merged = mergeAdminProfiles(data, local || []);
           this.setLocalData('admin_profiles', merged);
           return merged;
         }
