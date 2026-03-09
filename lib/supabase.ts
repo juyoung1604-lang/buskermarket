@@ -6,8 +6,8 @@ const getConfig = () => {
   const envKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
   if (typeof window === 'undefined') return { url: envUrl, key: envKey };
   return {
-    url: envUrl || localStorage.getItem('supa_url') || '',
-    key: envKey || localStorage.getItem('supa_anon_key') || ''
+    url: envUrl,
+    key: envKey
   };
 };
 
@@ -17,18 +17,19 @@ export const supabase = createClient(url || 'https://placeholder.supabase.co', k
 
 // Helper for DB operations with local caching
 const CACHE_PREFIX = 'songdo_cache_';
-const OFFLINE_Q_KEY = 'songdo_offline_queue';
 const LOCAL_DATA_KEY = 'songdo_local_data';
-const SYSTEM_SETTINGS_KEY = 'songdo_system_settings';
 const APP_SETTINGS_KEY = 'songdo_app_settings';
 const APP_SETTINGS_TABLE = 'app_settings';
-const ROLE_SETTINGS_KEY = 'admin_dynamic_roles';
 
 const APP_SETTING_NAMES = {
   system: 'system_settings',
   gmail: 'gmail_config',
   roles: 'admin_dynamic_roles',
 } as const;
+
+const memoryStore: Record<string, any> = {};
+const memoryCacheStore: Record<string, { data: any; ts: number }> = {};
+let memoryQueue: any[] = [];
 
 const DEFAULT_SETTINGS = {
   admin_page_name: 'SONGDO ADMIN',
@@ -350,21 +351,11 @@ const normalizeGmailConfig = (config: any = {}) => ({
 
 export const DB = {
   getCachedAppSettings() {
-    if (typeof window === 'undefined') return {};
-    try {
-      return JSON.parse(localStorage.getItem(APP_SETTINGS_KEY) || '{}');
-    } catch {
-      return {};
-    }
+    return memoryStore[APP_SETTINGS_KEY] || {};
   },
 
   setCachedAppSettings(settings: Record<string, any>) {
-    if (typeof window === 'undefined') return;
-    try {
-      localStorage.setItem(APP_SETTINGS_KEY, JSON.stringify(settings));
-    } catch {
-      /* ignore */
-    }
+    memoryStore[APP_SETTINGS_KEY] = settings;
   },
 
   getCachedAppSetting(name: string, fallback: any = null) {
@@ -416,29 +407,15 @@ export const DB = {
   },
 
   async getRoleConfig() {
-    const legacyLocal = (() => {
-      if (typeof window === 'undefined') return {};
-      try {
-        return JSON.parse(localStorage.getItem(ROLE_SETTINGS_KEY) || '{}');
-      } catch {
-        return {};
-      }
-    })();
-    const local = this.getCachedAppSetting(APP_SETTING_NAMES.roles, legacyLocal);
+    const local = this.getCachedAppSetting(APP_SETTING_NAMES.roles, {});
     const remote = await this.getRemoteAppSetting(APP_SETTING_NAMES.roles, local);
     const next = remote || {};
     this.setCachedAppSetting(APP_SETTING_NAMES.roles, next);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(ROLE_SETTINGS_KEY, JSON.stringify(next));
-    }
     return next;
   },
 
   async saveRoleConfig(roles: any) {
     this.setCachedAppSetting(APP_SETTING_NAMES.roles, roles);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(ROLE_SETTINGS_KEY, JSON.stringify(roles));
-    }
     return await this.saveRemoteAppSetting(APP_SETTING_NAMES.roles, roles);
   },
 
@@ -764,28 +741,13 @@ export const DB = {
   },
   // SYSTEM SETTINGS
   async getSystemSettings() {
-    const legacyLocal = (() => {
-      if (typeof window === 'undefined') return DEFAULT_SETTINGS;
-      try {
-        const saved = localStorage.getItem(SYSTEM_SETTINGS_KEY);
-        return saved ? JSON.parse(saved) : DEFAULT_SETTINGS;
-      } catch {
-        return DEFAULT_SETTINGS;
-      }
-    })();
-    const local = normalizeSystemSettings(this.getCachedAppSetting(APP_SETTING_NAMES.system, legacyLocal));
+    const local = normalizeSystemSettings(this.getCachedAppSetting(APP_SETTING_NAMES.system, DEFAULT_SETTINGS));
     const remote = normalizeSystemSettings(await this.getRemoteAppSetting(APP_SETTING_NAMES.system, local));
     this.setCachedAppSetting(APP_SETTING_NAMES.system, remote);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(SYSTEM_SETTINGS_KEY, JSON.stringify(remote));
-    }
     return remote;
   },
   async saveSystemSettings(settings: any) {
     const normalized = normalizeSystemSettings(settings);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(SYSTEM_SETTINGS_KEY, JSON.stringify(normalized));
-    }
     this.setCachedAppSetting(APP_SETTING_NAMES.system, normalized);
     this.cacheClear();
     return await this.saveRemoteAppSetting(APP_SETTING_NAMES.system, normalized);
@@ -795,24 +757,32 @@ export const DB = {
     const envUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
     const envKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
     return {
-      url: envUrl || (typeof window !== 'undefined' ? localStorage.getItem('supa_url') || '' : ''),
-      key: envKey || (typeof window !== 'undefined' ? localStorage.getItem('supa_anon_key') || '' : ''),
-      source: envUrl && envKey ? 'env' : 'browser',
+      url: envUrl,
+      key: envKey,
+      source: 'env',
     };
   },
 
-  saveConnectionConfig(config: { url: string; key: string }) {
-    const current = this.getConnectionConfig();
-    if (current.source === 'env') {
-      return {
-        error: {
-          message: '배포 환경에서는 Supabase 연결 정보가 서버 ENV에 고정됩니다. ENV 값을 변경해야 반영됩니다.',
-        },
-      };
+  saveConnectionConfig(_config: { url: string; key: string }) {
+    return {
+      error: {
+        message: 'Supabase 연결 정보는 브라우저 로컬이 아니라 서버 ENV에서만 관리됩니다.',
+      },
+    };
+  },
+
+  isServerBacked() {
+    return this.isConfigured();
+  },
+
+  shouldUseLocalPersistence() {
+    return !this.isServerBacked();
+  },
+
+  assertServerPersistence() {
+    if (!this.isServerBacked()) {
+      return { error: { message: '서버 DB 연결이 설정되지 않았습니다. 로컬 저장은 비활성화되어 있습니다.' } };
     }
-    if (typeof window === 'undefined') return { error: { message: '브라우저 환경에서만 저장할 수 있습니다.' } };
-    localStorage.setItem('supa_url', config.url);
-    localStorage.setItem('supa_anon_key', config.key);
     return { error: null };
   },
 
@@ -823,65 +793,46 @@ export const DB = {
   },
 
   cacheGet(key: string) {
-    if (typeof window === 'undefined') return null;
-    try {
-      const v = JSON.parse(localStorage.getItem(CACHE_PREFIX + key) || '');
-      if (v && Date.now() - v.ts < 30 * 60000) return v.data;
-    } catch { /* ignore */ }
+    const v = memoryCacheStore[CACHE_PREFIX + key];
+    if (v && Date.now() - v.ts < 30 * 60000) return v.data;
     return null;
   },
   cacheSet(key: string, data: any) {
-    if (typeof window === 'undefined') return;
-    try {
-      localStorage.setItem(CACHE_PREFIX + key, JSON.stringify({ data, ts: Date.now() }));
-    } catch { /* ignore */ }
+    memoryCacheStore[CACHE_PREFIX + key] = { data, ts: Date.now() };
   },
   cacheClear() {
-    if (typeof window === 'undefined') return;
-    Object.keys(localStorage).filter(k => k.startsWith(CACHE_PREFIX)).forEach(k => localStorage.removeItem(k));
+    Object.keys(memoryCacheStore)
+      .filter((k) => k.startsWith(CACHE_PREFIX))
+      .forEach((k) => delete memoryCacheStore[k]);
   },
 
   getLocalData(table: string) {
-    if (typeof window === 'undefined') return (MOCK_DATA as any)[table];
-    try {
-      const all = JSON.parse(localStorage.getItem(LOCAL_DATA_KEY) || '{}');
-      return all[table] || (MOCK_DATA as any)[table];
-    } catch { return (MOCK_DATA as any)[table]; }
+    return memoryStore[LOCAL_DATA_KEY]?.[table] || (MOCK_DATA as any)[table];
   },
   getStoredLocalData(table: string) {
-    if (typeof window === 'undefined') return [];
-    try {
-      const all = JSON.parse(localStorage.getItem(LOCAL_DATA_KEY) || '{}');
-      return all[table] || [];
-    } catch { return []; }
+    return memoryStore[LOCAL_DATA_KEY]?.[table] || [];
   },
   getUnsyncedLocalData(table: string) {
     const local = this.getStoredLocalData(table);
     return local.filter((item: any) => typeof item?.id === 'string' && item.id.startsWith('temp_'));
   },
   setLocalData(table: string, data: any) {
-    if (typeof window === 'undefined') return;
-    try {
-      const all = JSON.parse(localStorage.getItem(LOCAL_DATA_KEY) || '{}');
-      all[table] = data;
-      localStorage.setItem(LOCAL_DATA_KEY, JSON.stringify(all));
-    } catch { /* ignore */ }
+    if (this.isServerBacked()) return;
+    const all = memoryStore[LOCAL_DATA_KEY] || {};
+    all[table] = data;
+    memoryStore[LOCAL_DATA_KEY] = all;
   },
 
   // OFFLINE QUEUE
   getQueue() {
-    if (typeof window === 'undefined') return [];
-    try { return JSON.parse(localStorage.getItem(OFFLINE_Q_KEY) || '[]'); } catch { return []; }
+    return memoryQueue;
   },
   enqueue(op: any) {
-    if (typeof window === 'undefined') return;
-    const q = this.getQueue();
-    q.push({ ...op, ts: Date.now(), qid: Date.now() + Math.random() });
-    localStorage.setItem(OFFLINE_Q_KEY, JSON.stringify(q));
+    if (this.isServerBacked()) return;
+    memoryQueue = [...memoryQueue, { ...op, ts: Date.now(), qid: Date.now() + Math.random() }];
   },
   clearQueue() {
-    if (typeof window === 'undefined') return;
-    localStorage.removeItem(OFFLINE_Q_KEY);
+    memoryQueue = [];
   },
 
   // BUSKERS
@@ -1055,9 +1006,6 @@ export const DB = {
 
   async createBusker(payload: any) {
     const newItem = { id: 'temp_' + Date.now(), ...payload };
-    const local = this.getStoredLocalData('buskers');
-    this.setLocalData('buskers', [newItem, ...local]);
-    this.cacheClear();
 
     if (this.isConfigured()) {
       try {
@@ -1068,31 +1016,20 @@ export const DB = {
           if (isMissingColumnError(res.error, 'birth_date')) cleanPayload = omitColumn(cleanPayload, 'birth_date');
           res = await supabase.from('buskers').insert([cleanPayload]).select().single();
         }
-        if (res.error) {
-          this.enqueue({ type: 'create', table: 'buskers', payload: newItem });
-          return { data: newItem, error: null, offline: true };
-        }
-
-        const merged = mergeRecordsById(
-          this.getStoredLocalData('buskers').filter((item: any) => item.id !== newItem.id),
-          [res.data]
-        ).sort((a: any, b: any) => (b.applied_at || '').localeCompare(a.applied_at || ''));
-        this.setLocalData('buskers', merged);
         this.cacheClear();
         return res;
       } catch (e) {
-        this.enqueue({ type: 'create', table: 'buskers', payload: newItem });
-        return { data: newItem, error: null, offline: true };
+        return { data: null, error: e };
       }
     }
+    const local = this.getStoredLocalData('buskers');
+    this.setLocalData('buskers', [newItem, ...local]);
+    this.cacheClear();
     return { data: newItem, error: null };
   },
 
   async createSeller(payload: any) {
     const newItem = { id: 'temp_' + Date.now(), ...payload };
-    const local = this.getStoredLocalData('sellers');
-    this.setLocalData('sellers', [newItem, ...local]);
-    this.cacheClear();
 
     if (this.isConfigured()) {
       try {
@@ -1103,95 +1040,66 @@ export const DB = {
           if (isMissingColumnError(res.error, 'birth_date')) cleanPayload = omitColumn(cleanPayload, 'birth_date');
           res = await supabase.from('sellers').insert([cleanPayload]).select().single();
         }
-        if (res.error) {
-          this.enqueue({ type: 'create', table: 'sellers', payload: newItem });
-          return { data: newItem, error: null, offline: true };
-        }
-
-        const merged = mergeRecordsById(
-          this.getStoredLocalData('sellers').filter((item: any) => item.id !== newItem.id),
-          [res.data]
-        ).sort((a: any, b: any) => (b.applied_at || '').localeCompare(a.applied_at || ''));
-        this.setLocalData('sellers', merged);
         this.cacheClear();
         return res;
       } catch (e) {
-        this.enqueue({ type: 'create', table: 'sellers', payload: newItem });
-        return { data: newItem, error: null, offline: true };
+        return { data: null, error: e };
       }
     }
+    const local = this.getStoredLocalData('sellers');
+    this.setLocalData('sellers', [newItem, ...local]);
+    this.cacheClear();
     return { data: newItem, error: null };
   },
 
   async createEvent(payload: any) {
     const newItem = { id: 'temp_e_' + Date.now(), ...payload };
-    const local = this.getStoredLocalData('events');
-    this.setLocalData('events', [...local, newItem]);
-    this.cacheClear();
 
     if (this.isConfigured()) {
       try {
         const res = await supabase.from('events').insert([payload]).select().single();
-        if (res.error) {
-          this.enqueue({ type: 'create', table: 'events', payload: newItem });
-          return { data: newItem, error: null, offline: true };
-        }
-
-        const merged = mergeRecordsById(
-          this.getStoredLocalData('events').filter((item: any) => item.id !== newItem.id),
-          [res.data]
-        ).sort((a: any, b: any) => a.event_date.localeCompare(b.event_date));
-        this.setLocalData('events', merged);
         this.cacheClear();
         return res;
       } catch (e) {
-        this.enqueue({ type: 'create', table: 'events', payload: newItem });
-        return { data: newItem, error: null, offline: true };
+        return { data: null, error: e };
       }
     }
+    const local = this.getStoredLocalData('events');
+    this.setLocalData('events', [...local, newItem]);
+    this.cacheClear();
     return { data: newItem, error: null };
   },
 
   async updateEvent(id: string, payload: any) {
+    if (this.isConfigured() && !id.startsWith('e') && !id.startsWith('temp_')) {
+      try {
+        const res = await supabase.from('events').update(payload).eq('id', id).select().single();
+        this.cacheClear();
+        return res;
+      } catch (e) {
+        return { data: null, error: e };
+      }
+    }
     const local = this.getStoredLocalData('events');
     const updated = local.map((item: any) => item.id === id ? { ...item, ...payload } : item);
     this.setLocalData('events', updated);
     this.cacheClear();
-
-    if (this.isConfigured() && !id.startsWith('e') && !id.startsWith('temp_')) {
-      try {
-        const res = await supabase.from('events').update(payload).eq('id', id).select().single();
-        if (res.error) {
-          this.enqueue({ type: 'update', table: 'events', id, payload });
-          return { data: updated.find((item: any) => item.id === id), error: null, offline: true };
-        }
-        return res;
-      } catch (e) {
-        this.enqueue({ type: 'update', table: 'events', id, payload });
-        return { data: updated.find((item: any) => item.id === id), error: null, offline: true };
-      }
-    }
     return { data: updated.find((item: any) => item.id === id), error: null };
   },
 
   async deleteEvent(id: string) {
-    const local = this.getStoredLocalData('events');
-    this.setLocalData('events', local.filter((item: any) => item.id !== id));
-    this.cacheClear();
-
     if (this.isConfigured() && !id.startsWith('e') && !id.startsWith('temp_')) {
       try {
         const res = await supabase.from('events').delete().eq('id', id);
-        if (res.error) {
-          this.enqueue({ type: 'delete', table: 'events', id });
-          return { error: null, offline: true };
-        }
+        this.cacheClear();
         return res;
       } catch (e) {
-        this.enqueue({ type: 'delete', table: 'events', id });
-        return { error: null, offline: true };
+        return { error: e };
       }
     }
+    const local = this.getStoredLocalData('events');
+    this.setLocalData('events', local.filter((item: any) => item.id !== id));
+    this.cacheClear();
     return { error: null };
   },
 
@@ -1202,42 +1110,23 @@ export const DB = {
       updated_at: new Date().toISOString(),
       ...payload,
     };
-    const local = this.getStoredLocalData('homepage_popups') || [];
-    this.setLocalData('homepage_popups', [newItem, ...local]);
-    this.cacheClear();
 
     if (this.isConfigured()) {
       try {
         const res = await supabase.from('homepage_popups').insert([payload]).select().single();
-        if (res.error) {
-          this.enqueue({ type: 'create', table: 'homepage_popups', payload: newItem });
-          return { data: newItem, error: null, offline: true };
-        }
-
-        const merged = mergeRecordsById(
-          this.getStoredLocalData('homepage_popups').filter((item: any) => item.id !== newItem.id),
-          [res.data]
-        ).sort((a: any, b: any) => (b.created_at || '').localeCompare(a.created_at || ''));
-        this.setLocalData('homepage_popups', merged);
         this.cacheClear();
         return res;
       } catch (e) {
-        this.enqueue({ type: 'create', table: 'homepage_popups', payload: newItem });
-        return { data: newItem, error: null, offline: true };
+        return { data: null, error: e };
       }
     }
-
+    const local = this.getStoredLocalData('homepage_popups') || [];
+    this.setLocalData('homepage_popups', [newItem, ...local]);
+    this.cacheClear();
     return { data: newItem, error: null };
   },
 
   async updateHomepagePopup(id: string, payload: any) {
-    const local = this.getStoredLocalData('homepage_popups') || [];
-    const updated = local.map((item: any) =>
-      item.id === id ? { ...item, ...payload, updated_at: new Date().toISOString() } : item
-    );
-    this.setLocalData('homepage_popups', updated);
-    this.cacheClear();
-
     if (this.isConfigured() && !id.startsWith('temp_')) {
       try {
         const res = await supabase
@@ -1246,39 +1135,34 @@ export const DB = {
           .eq('id', id)
           .select()
           .single();
-        if (res.error) {
-          this.enqueue({ type: 'update', table: 'homepage_popups', id, payload });
-          return { data: updated.find((item: any) => item.id === id), error: null, offline: true };
-        }
+        this.cacheClear();
         return res;
       } catch (e) {
-        this.enqueue({ type: 'update', table: 'homepage_popups', id, payload });
-        return { data: updated.find((item: any) => item.id === id), error: null, offline: true };
+        return { data: null, error: e };
       }
     }
-
+    const local = this.getStoredLocalData('homepage_popups') || [];
+    const updated = local.map((item: any) =>
+      item.id === id ? { ...item, ...payload, updated_at: new Date().toISOString() } : item
+    );
+    this.setLocalData('homepage_popups', updated);
+    this.cacheClear();
     return { data: updated.find((item: any) => item.id === id), error: null };
   },
 
   async deleteHomepagePopup(id: string) {
-    const local = this.getStoredLocalData('homepage_popups') || [];
-    this.setLocalData('homepage_popups', local.filter((item: any) => item.id !== id));
-    this.cacheClear();
-
     if (this.isConfigured() && !id.startsWith('temp_')) {
       try {
         const res = await supabase.from('homepage_popups').delete().eq('id', id);
-        if (res.error) {
-          this.enqueue({ type: 'delete', table: 'homepage_popups', id });
-          return { error: null, offline: true };
-        }
+        this.cacheClear();
         return res;
       } catch (e) {
-        this.enqueue({ type: 'delete', table: 'homepage_popups', id });
-        return { error: null, offline: true };
+        return { error: e };
       }
     }
-
+    const local = this.getStoredLocalData('homepage_popups') || [];
+    this.setLocalData('homepage_popups', local.filter((item: any) => item.id !== id));
+    this.cacheClear();
     return { error: null };
   },
 
@@ -1537,13 +1421,11 @@ export const DB = {
     if (failed?.error) throw failed.error;
 
     this.cacheClear();
-    if (typeof window !== 'undefined') {
-      const local = JSON.parse(localStorage.getItem(LOCAL_DATA_KEY) || '{}');
-      for (const { table } of SAMPLE_RESET_TARGETS) {
-        delete local[table];
-      }
-      localStorage.setItem(LOCAL_DATA_KEY, JSON.stringify(local));
+    const local = memoryStore[LOCAL_DATA_KEY] || {};
+    for (const { table } of SAMPLE_RESET_TARGETS) {
+      delete local[table];
     }
+    memoryStore[LOCAL_DATA_KEY] = local;
 
     return { success: true };
   },
@@ -1615,9 +1497,7 @@ export const DB = {
     if (failed?.error) throw failed.error;
 
     this.cacheClear();
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem(LOCAL_DATA_KEY);
-    }
+    delete memoryStore[LOCAL_DATA_KEY];
     return { success: true };
   }
 };

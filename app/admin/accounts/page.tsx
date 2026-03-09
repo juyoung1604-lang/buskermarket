@@ -343,7 +343,7 @@ const AccountsPage = () => {
 
         <div className="acc-right space-y-4">
           {editableRoleKeys.length > 0 && (
-            <div className="card">
+            <div className="card hide-on-mobile">
               <div className="card-h">
                 <span className="card-title">권한 매트릭스 수정</span>
                 <span style={{ fontSize: '.6rem', color: 'var(--jade)' }}>하위 등급만 수정 가능</span>

@@ -154,7 +154,6 @@ export default function AdminLayout({
     DB.getRoleConfig().then((savedRoles) => {
       const mergedRoles = mergeRoleConfig(savedRoles);
       setDynamicRoles(mergedRoles);
-      localStorage.setItem('admin_dynamic_roles', JSON.stringify(mergedRoles));
     });
   }, []);
 
@@ -170,7 +169,6 @@ export default function AdminLayout({
       }
     };
     setDynamicRoles(updated);
-    localStorage.setItem('admin_dynamic_roles', JSON.stringify(updated));
     DB.saveRoleConfig(updated);
   };
 

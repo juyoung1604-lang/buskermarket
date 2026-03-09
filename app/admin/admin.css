@@ -646,19 +646,22 @@ td {
   .cal-right { order: 1; }
   .cal-grid { min-height: 380px !important; }
 
-  .revenue-grid { grid-template-columns: 1fr; }
-  .popup-mgr-grid { grid-template-columns: 1fr; }
+  .revenue-grid { display: flex; flex-direction: column; }
+  .popup-mgr-grid { display: flex; flex-direction: column; gap: 16px; }
   .pm-form { order: 1; }
   .pm-list { order: 2; }
 
-  .newsletter-grid { grid-template-columns: 1fr; }
+  .newsletter-grid { display: flex; flex-direction: column; gap: 16px; }
   .nl-left { order: 1; }
   .nl-right { order: 2; }
+  .nl-right .fta { height: 300px !important; } /* 뉴스레터 본문 높이 조절 */
 
-  .supa-grid { grid-template-columns: 1fr; }
+  .supa-grid { display: flex; flex-direction: column; }
 
   .acc-level-grid { grid-template-columns: 1fr !important; }
   .accounts-main-grid { grid-template-columns: 1fr; }
+
+  .hide-on-mobile { display: none !important; }
 
   .modal { width: 96%; margin: 10px; }
 }
