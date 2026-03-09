@@ -315,10 +315,12 @@ const normalizePoolRecord = (type: 'busker' | 'seller', source: any, existing: a
 const isMissingColumnError = (error: any, column: string) => {
   if (!error?.message) return false;
   const msg = String(error.message).toLowerCase();
-  return msg.includes(`column "${column.toLowerCase()}" does not exist`) || 
-         msg.includes(`Could not find the ${column.toLowerCase()}' column`) ||
-         msg.includes(`'${column.toLowerCase()}' column`) ||
-         msg.includes(`column "${column.toLowerCase()}" of relation`);
+  const col = column.toLowerCase();
+  return msg.includes(`column "${col}" does not exist`) ||
+         msg.includes(`could not find the '${col}' column`) ||
+         msg.includes(`'${col}' column`) ||
+         msg.includes(`column "${col}" of relation`) ||
+         msg.includes(`could not find the "${col}" column`);
 };
 
 const isMissingTableError = (error: any, table: string) => {
@@ -1151,10 +1153,15 @@ export const DB = {
     if (this.isConfigured()) {
       try {
         let res = await supabase.from('buskers').insert([payload]).select().single();
-        if (res.error && (isMissingColumnError(res.error, 'rejection_reason') || isMissingColumnError(res.error, 'birth_date'))) {
+        if (res.error && (
+          isMissingColumnError(res.error, 'rejection_reason') ||
+          isMissingColumnError(res.error, 'birth_date') ||
+          isMissingColumnError(res.error, 'organization')
+        )) {
           let cleanPayload = { ...payload };
           if (isMissingColumnError(res.error, 'rejection_reason')) cleanPayload = omitColumn(cleanPayload, 'rejection_reason');
           if (isMissingColumnError(res.error, 'birth_date')) cleanPayload = omitColumn(cleanPayload, 'birth_date');
+          if (isMissingColumnError(res.error, 'organization')) cleanPayload = omitColumn(cleanPayload, 'organization');
           res = await supabase.from('buskers').insert([cleanPayload]).select().single();
         }
         this.cacheClear();
@@ -1175,10 +1182,15 @@ export const DB = {
     if (this.isConfigured()) {
       try {
         let res = await supabase.from('sellers').insert([payload]).select().single();
-        if (res.error && (isMissingColumnError(res.error, 'rejection_reason') || isMissingColumnError(res.error, 'birth_date'))) {
+        if (res.error && (
+          isMissingColumnError(res.error, 'rejection_reason') ||
+          isMissingColumnError(res.error, 'birth_date') ||
+          isMissingColumnError(res.error, 'organization')
+        )) {
           let cleanPayload = { ...payload };
           if (isMissingColumnError(res.error, 'rejection_reason')) cleanPayload = omitColumn(cleanPayload, 'rejection_reason');
           if (isMissingColumnError(res.error, 'birth_date')) cleanPayload = omitColumn(cleanPayload, 'birth_date');
+          if (isMissingColumnError(res.error, 'organization')) cleanPayload = omitColumn(cleanPayload, 'organization');
           res = await supabase.from('sellers').insert([cleanPayload]).select().single();
         }
         this.cacheClear();
