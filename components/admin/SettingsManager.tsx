@@ -273,6 +273,10 @@ export default function SettingsManager({ mode = 'all' }: { mode?: SettingsViewM
                         const isGallery = 'defaultCaption' in item;
                         const defaultCaption = isGallery ? item.defaultCaption : undefined;
                         const defaultLayout = isGallery ? item.defaultLayout : undefined;
+                        
+                        // Local state for each input to handle changes before saving
+                        const inputRef = useRef<HTMLInputElement>(null);
+
                         return (
                           <div key={item.id} style={{ borderTop: '1px solid var(--line)', paddingTop: '14px' }}>
                             <label style={{ display: 'block', fontSize: '.75rem', fontWeight: 700, color: 'var(--muted)', marginBottom: '8px' }}>{item.label}</label>
@@ -282,14 +286,10 @@ export default function SettingsManager({ mode = 'all' }: { mode?: SettingsViewM
                               </div>
                               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px' }}>
                                 <input
+                                  ref={inputRef}
                                   className="fi"
                                   placeholder="이미지 URL을 입력하세요"
                                   defaultValue={current?.url || ''}
-                                  onBlur={(e) => {
-                                    if (e.target.value && e.target.value !== current?.url) {
-                                      handleUpdateImage(item.id, e.target.value, item.section, item.label);
-                                    }
-                                  }}
                                 />
                                 {isGallery && (
                                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px', marginTop: '4px' }}>
@@ -331,9 +331,34 @@ export default function SettingsManager({ mode = 'all' }: { mode?: SettingsViewM
                                   </div>
                                 )}
                               </div>
-                              <button className="btn" onClick={() => handleResetImage(item.id, item.default, item.section, item.label, defaultCaption, defaultLayout)} title="기본값으로 복원" style={{ flexShrink: 0 }}>
-                                <i className="ri-restart-line"></i>
-                              </button>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                <button 
+                                  className="btn btn-jade" 
+                                  onClick={() => {
+                                    const val = inputRef.current?.value;
+                                    if (val !== undefined) {
+                                      handleUpdateImage(item.id, val, item.section, item.label);
+                                    }
+                                  }} 
+                                  title="수정사항 저장" 
+                                  style={{ padding: '6px 10px', height: '32px' }}
+                                >
+                                  <i className="fa-solid fa-save"></i>
+                                </button>
+                                <button 
+                                  className="btn" 
+                                  onClick={() => {
+                                    if (confirm('기본 이미지로 복원하시겠습니까?')) {
+                                      handleResetImage(item.id, item.default, item.section, item.label, defaultCaption, defaultLayout);
+                                      if (inputRef.current) inputRef.current.value = item.default;
+                                    }
+                                  }} 
+                                  title="기본값으로 복원" 
+                                  style={{ padding: '6px 10px', height: '32px' }}
+                                >
+                                  <i className="ri-restart-line"></i>
+                                </button>
+                              </div>
                             </div>
                           </div>
                         );
