@@ -39,14 +39,34 @@ export default function Footer() {
     }
 
     setLoading(true);
-    const { error } = await DB.subscribeNewsletter(email);
-    setLoading(false);
+    try {
+      // Pass client-side Supabase config as fallback for server API
+      const supabaseUrl =
+        (typeof window !== "undefined" && localStorage.getItem("supabase_url")) ||
+        process.env.NEXT_PUBLIC_SUPABASE_URL ||
+        "";
+      const supabaseKey =
+        (typeof window !== "undefined" && localStorage.getItem("supabase_key")) ||
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+        "";
 
-    if (error) {
-      toast(error.message, "rose");
-    } else {
-      toast("구독해주셔서 감사합니다! 최신 소식을 보내드릴게요.", "jade");
-      setEmail("");
+      const res = await fetch("/api/subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, supabaseUrl, supabaseKey }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        toast(data.error || "구독에 실패했습니다.", "rose");
+      } else {
+        toast("구독해주셔서 감사합니다! 최신 소식을 보내드릴게요.", "jade");
+        setEmail("");
+      }
+    } catch {
+      toast("오류가 발생했습니다. 잠시 후 다시 시도해주세요.", "rose");
+    } finally {
+      setLoading(false);
     }
   };
 
