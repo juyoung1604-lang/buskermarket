@@ -21,6 +21,10 @@ const NewsletterPage = () => {
   // Selection & Search
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  // Manual email input
+  const [manualEmailInput, setManualEmailInput] = useState('');
+  const [manualEmails, setManualEmails] = useState<string[]>([]);
   
   // Gmail Settings
   const [gmailConfig, setGmailConfig] = useState({
@@ -195,6 +199,28 @@ const NewsletterPage = () => {
     }
   };
 
+  const addManualEmail = () => {
+    const email = manualEmailInput.trim().toLowerCase();
+    if (!email || !email.includes('@') || !email.includes('.')) {
+      toast('올바른 이메일 주소를 입력해주세요.', 'rose');
+      return;
+    }
+    if (manualEmails.includes(email)) {
+      toast('이미 추가된 이메일입니다.', 'sky');
+      return;
+    }
+    if (emails.some(e => e.email === email)) {
+      toast('구독자 명단에 이미 있는 이메일입니다.', 'sky');
+      return;
+    }
+    setManualEmails(prev => [...prev, email]);
+    setManualEmailInput('');
+  };
+
+  const removeManualEmail = (email: string) => {
+    setManualEmails(prev => prev.filter(e => e !== email));
+  };
+
   const handleDelete = async (id: string) => {
     if (!confirm('구독 명단에서 삭제하시겠습니까?')) return;
     const { error } = await DB.deleteNewsletter(id);
@@ -214,12 +240,13 @@ const NewsletterPage = () => {
       return;
     }
     
-    const recipients = emails
-      .filter(e => selectedIds.has(e.id))
-      .map(e => e.email);
+    const recipients = [
+      ...emails.filter(e => selectedIds.has(e.id)).map(e => e.email),
+      ...manualEmails,
+    ];
 
     if (recipients.length === 0) {
-      toast('발송할 대상을 선택해주세요.', 'rose');
+      toast('발송할 대상을 선택하거나 이메일을 직접 추가해주세요.', 'rose');
       return;
     }
 
@@ -240,8 +267,9 @@ const NewsletterPage = () => {
       const result = await response.json();
 
       if (result.success) {
-        toast(`${recipients.length}명의 구독자에게 뉴스레터 발송이 완료되었습니다.`, 'jade');
+        toast(`${recipients.length}명에게 뉴스레터 발송이 완료되었습니다.`, 'jade');
         setCompose({ subject: '', content: '' });
+        setManualEmails([]);
         
         // Log this activity
         DB.createAdminLog({
@@ -394,12 +422,14 @@ const NewsletterPage = () => {
           <div className="card-h">
             <span className="card-title">뉴스레터 작성 및 발송</span>
             <div className="flex gap-2">
-              <button 
-                className="btn btn-jade" 
-                onClick={handleSendMail} 
-                disabled={sending || !gmailConfig.isConnected || selectedIds.size === 0}
+              <button
+                className="btn btn-jade"
+                onClick={handleSendMail}
+                disabled={sending || !gmailConfig.isConnected || (selectedIds.size === 0 && manualEmails.length === 0)}
               >
-                {sending ? <span className="spinner" style={{ width: '14px', height: '14px' }}></span> : <><i className="fa-solid fa-paper-plane"></i> {selectedIds.size === emails.length ? '전체 발송' : `${selectedIds.size}명에게 발송`}</>}
+                {sending
+                  ? <span className="spinner" style={{ width: '14px', height: '14px' }}></span>
+                  : <><i className="fa-solid fa-paper-plane"></i> {selectedIds.size + manualEmails.length}명에게 발송</>}
               </button>
             </div>
           </div>
@@ -427,7 +457,7 @@ const NewsletterPage = () => {
             <div style={{ padding: '14px', background: 'var(--ink3)', borderRadius: '12px', border: '1px dashed var(--line)' }}>
               <div style={{ fontSize: '.75rem', fontWeight: 700, color: 'var(--head)', marginBottom: '4px' }}>발송 정보 확인</div>
               <ul style={{ fontSize: '.7rem', color: 'var(--muted)', listStyle: 'disc', paddingLeft: '16px' }}>
-                <li>총 {selectedIds.size}명의 선택된 구독자에게 발송됩니다.</li>
+                <li>구독자 명단 <strong style={{ color: 'var(--text)' }}>{selectedIds.size}명</strong> + 직접 추가 <strong style={{ color: 'var(--text)' }}>{manualEmails.length}명</strong> = 총 <strong style={{ color: 'var(--jade)' }}>{selectedIds.size + manualEmails.length}명</strong>에게 발송됩니다.</li>
                 <li>Gmail 서버를 통해 안전하게 개별 발송 처리됩니다.</li>
                 <li>발송 후 관리자 로그에 기록이 남습니다.</li>
               </ul>
@@ -460,8 +490,8 @@ const NewsletterPage = () => {
                   <thead style={{ position: 'sticky', top: 0, background: 'var(--ink3)', zIndex: 10, borderBottom: '1px solid var(--line)' }}>
                     <tr>
                       <th style={{ padding: '10px 16px', width: '40px', textAlign: 'left' }}>
-                        <input 
-                          type="checkbox" 
+                        <input
+                          type="checkbox"
                           checked={filteredEmails.length > 0 && filteredEmails.every(e => selectedIds.has(e.id))}
                           onChange={toggleSelectAll}
                         />
@@ -478,8 +508,8 @@ const NewsletterPage = () => {
                     ) : filteredEmails.map(n => (
                       <tr key={n.id} style={{ borderBottom: '1px solid var(--line)', background: selectedIds.has(n.id) ? 'rgba(13, 148, 136, 0.03)' : 'transparent' }}>
                         <td style={{ padding: '10px 16px' }}>
-                          <input 
-                            type="checkbox" 
+                          <input
+                            type="checkbox"
                             checked={selectedIds.has(n.id)}
                             onChange={() => toggleSelect(n.id)}
                           />
@@ -497,6 +527,64 @@ const NewsletterPage = () => {
                     ))}
                   </tbody>
                 </table>
+              </div>
+
+              {/* 수동 이메일 추가 영역 */}
+              <div style={{ padding: '14px 16px', borderTop: '2px solid var(--line)', background: 'var(--ink2)' }}>
+                <div style={{ fontSize: '.75rem', fontWeight: 700, color: 'var(--head)', marginBottom: '10px' }}>
+                  <i className="fa-solid fa-user-plus" style={{ marginRight: '6px', color: 'var(--jade)' }}></i>
+                  직접 추가 {manualEmails.length > 0 && <span style={{ color: 'var(--jade)' }}>({manualEmails.length})</span>}
+                </div>
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  <input
+                    className="fi"
+                    style={{ height: '36px', fontSize: '.8rem' }}
+                    type="email"
+                    placeholder="추가할 이메일 주소 입력..."
+                    value={manualEmailInput}
+                    onChange={(e) => setManualEmailInput(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addManualEmail(); } }}
+                  />
+                  <button
+                    className="btn btn-jade"
+                    onClick={addManualEmail}
+                    style={{ padding: '0 14px', height: '36px', whiteSpace: 'nowrap', flexShrink: 0 }}
+                  >
+                    <i className="fa-solid fa-plus"></i> 추가
+                  </button>
+                </div>
+                {manualEmails.length > 0 && (
+                  <div style={{ marginTop: '10px', display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                    {manualEmails.map(email => (
+                      <span
+                        key={email}
+                        style={{
+                          display: 'inline-flex', alignItems: 'center', gap: '5px',
+                          padding: '3px 10px 3px 12px',
+                          background: 'rgba(13,148,136,0.08)',
+                          border: '1px solid var(--jade)',
+                          borderRadius: '20px',
+                          fontSize: '.72rem', color: 'var(--jade)', fontWeight: 600,
+                        }}
+                      >
+                        {email}
+                        <button
+                          onClick={() => removeManualEmail(email)}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--jade)', padding: '0', lineHeight: 1, display: 'flex', alignItems: 'center' }}
+                          title="제거"
+                        >
+                          <i className="fa-solid fa-xmark" style={{ fontSize: '.65rem' }}></i>
+                        </button>
+                      </span>
+                    ))}
+                    <button
+                      onClick={() => setManualEmails([])}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', fontSize: '.7rem', padding: '3px 6px', alignSelf: 'center' }}
+                    >
+                      전체 삭제
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
         </div>
