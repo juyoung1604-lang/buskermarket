@@ -258,7 +258,10 @@ export default function AdminLayout({
     ['/admin/revenue', 'view_revenue'],
     ['/admin/accounts', 'account_access'],
     ['/admin/settings', 'system_settings'],
-    ['/admin/supabase', 'supabase_access']
+    ['/admin/supabase', 'supabase_access'],
+    ['/admin/faq', 'system_settings'],
+    ['/admin/newsletter', 'system_settings'],
+    ['/admin/popups', 'system_settings'],
   ];
   const matchedGuard = guardEntries.find(([prefix]) => pathname === prefix || pathname.startsWith(prefix + '/'));
 

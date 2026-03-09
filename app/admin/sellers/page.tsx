@@ -19,6 +19,7 @@ const getRejectionReason = (item: any) => item?.rejection_reason?.trim() || '';
 const SellersPage = () => {
   const { can } = useAdmin();
   const { toast } = useToast();
+  const canDelete = can('delete');
   const [sellers, setSellers] = useState<any[]>([]);
   const [events, setEvents] = useState<any[]>([]);
   const [pool, setPool] = useState<any[]>([]);
@@ -96,7 +97,11 @@ const SellersPage = () => {
   };
 
   const handleBulkStatusChange = async (status: string) => {
-    if (!can('approve')) return;
+    if (status === 'delete') {
+      if (!canDelete) return;
+    } else {
+      if (!can('approve')) return;
+    }
 
     if (status === 'pool') {
       if (!confirm(`${selectedIds.length}건의 항목을 통합 데이터베이스로 이관하시겠습니까?`)) return;
@@ -213,15 +218,15 @@ const SellersPage = () => {
 
   return (
     <div className="space-y-6">
-      {selectedIds.length > 0 && (
+      {can('approve') && selectedIds.length > 0 && (
         <div style={{ position: 'sticky', top: '0', zIndex: 40, background: 'var(--gold)', color: '#000', padding: '12px 20px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '12px', boxShadow: '0 10px 30px rgba(240,165,0,0.3)', marginBottom: '10px' }}>
           <span style={{ fontWeight: 800, fontSize: '.85rem', marginRight: 'auto' }}><i className="fa-solid fa-check-double"></i> {selectedIds.length}개 선택됨</span>
           <div style={{ display: 'flex', gap: '8px' }}>
-            <button className="btn btn-ghost" style={{ background: 'rgba(255,255,255,0.4)', fontWeight: 700, fontSize: '.75rem' }} onClick={() => handleBulkStatusChange('pool')}><i className="fa-solid fa-database"></i> DB 저장</button>
+            {can('edit') && <button className="btn btn-ghost" style={{ background: 'rgba(255,255,255,0.4)', fontWeight: 700, fontSize: '.75rem' }} onClick={() => handleBulkStatusChange('pool')}><i className="fa-solid fa-database"></i> DB 저장</button>}
             <button className="btn btn-ghost" style={{ background: 'rgba(0,0,0,0.1)', fontWeight: 700, fontSize: '.75rem' }} onClick={() => handleBulkStatusChange('approved')}>선택 승인</button>
             <button className="btn btn-ghost" style={{ background: 'rgba(0,0,0,0.1)', fontWeight: 700, fontSize: '.75rem' }} onClick={() => handleBulkStatusChange('paid')}>선택 결제완료</button>
             <button className="btn btn-ghost" style={{ background: 'rgba(0,0,0,0.1)', fontWeight: 700, fontSize: '.75rem' }} onClick={() => handleBulkStatusChange('rejected')}>선택 거절</button>
-            <button className="btn btn-ghost" style={{ background: 'rgba(255,0,0,0.1)', color: '#d00', fontWeight: 700, fontSize: '.75rem' }} onClick={() => handleBulkStatusChange('delete')}>선택 삭제</button>
+            {canDelete && <button className="btn btn-ghost" style={{ background: 'rgba(255,0,0,0.1)', color: '#d00', fontWeight: 700, fontSize: '.75rem' }} onClick={() => handleBulkStatusChange('delete')}>선택 삭제</button>}
           </div>
           <div style={{ width: '1px', height: '20px', background: 'rgba(0,0,0,0.1)', margin: '0 4px' }}></div>
           <button className="btn btn-ghost" style={{ fontSize: '.75rem', fontWeight: 700 }} onClick={() => setSelectedIds([])}>취소</button>
@@ -299,11 +304,11 @@ const SellersPage = () => {
                   <td>
                     <div className="td-acts">
                       <button className="ico-btn" onClick={() => setSelectedItem(s)}><i className="fa-solid fa-eye"></i></button>
-                      <button className="ico-btn" onClick={async () => {
+                      {can('edit') && <button className="ico-btn" onClick={async () => {
                         await DB.transferApplicantToPool('seller', s);
                         toast('통합 인력 풀 DB로 이관되었습니다.', 'jade');
                         fetchData();
-                      }} title="DB에 보관"><i className="fa-solid fa-database"></i></button>
+                      }} title="DB에 보관"><i className="fa-solid fa-database"></i></button>}
                     </div>
                   </td>
                 </tr>

@@ -4,9 +4,12 @@
 import React, { useEffect, useState } from 'react';
 import { DB } from '@/lib/supabase';
 import { useToast } from '@/components/admin/Toast';
+import { useAdmin } from '../layout';
 
 const FaqAdminPage = () => {
+  const { can } = useAdmin();
   const { toast } = useToast();
+  const canManage = can('system_settings');
   const [faqs, setFaqs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -36,6 +39,7 @@ const FaqAdminPage = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!canManage) return;
     if (!formData.question || !formData.answer) {
       toast('질문과 답변을 모두 입력해주세요.', 'rose');
       return;
@@ -60,6 +64,7 @@ const FaqAdminPage = () => {
   };
 
   const handleDelete = async (id: string) => {
+    if (!canManage) return;
     if (!confirm('정말 삭제하시겠습니까?')) return;
     await DB.deleteFaq(id);
     toast('삭제되었습니다.', 'sky');
@@ -67,6 +72,7 @@ const FaqAdminPage = () => {
   };
 
   const moveItem = async (index: number, direction: 'up' | 'down') => {
+    if (!canManage) return;
     const newFaqs = [...faqs];
     const targetIndex = direction === 'up' ? index - 1 : index + 1;
     if (targetIndex < 0 || targetIndex >= newFaqs.length) return;
@@ -79,43 +85,45 @@ const FaqAdminPage = () => {
 
   return (
     <div className="space-y-6">
-      {/* 등록/수정 폼 */}
-      <div className="card">
-        <div className="card-h">
-          <span className="card-title">{editingId ? 'FAQ 수정' : '새 FAQ 등록'}</span>
+      {/* 등록/수정 폼 — 시스템설정 권한자만 */}
+      {canManage && (
+        <div className="card">
+          <div className="card-h">
+            <span className="card-title">{editingId ? 'FAQ 수정' : '새 FAQ 등록'}</span>
+          </div>
+          <div className="card-body">
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="fg">
+                <label>질문 (Question)</label>
+                <input
+                  className="fi"
+                  placeholder="질문을 입력하세요"
+                  value={formData.question}
+                  onChange={(e) => setFormData({...formData, question: e.target.value})}
+                />
+              </div>
+              <div className="fg">
+                <label>답변 (Answer)</label>
+                <textarea
+                  className="fta"
+                  style={{ height: '120px' }}
+                  placeholder="답변을 입력하세요"
+                  value={formData.answer}
+                  onChange={(e) => setFormData({...formData, answer: e.target.value})}
+                />
+              </div>
+              <div className="flex gap-2">
+                <button type="submit" className="btn btn-jade" disabled={loading}>
+                  {loading ? <span className="spinner" style={{ width: '14px', height: '14px' }}></span> : <><i className="fa-solid fa-save"></i> {editingId ? '수정 완료' : '등록하기'}</>}
+                </button>
+                {editingId && (
+                  <button type="button" className="btn" onClick={handleCancel}>취소</button>
+                )}
+              </div>
+            </form>
+          </div>
         </div>
-        <div className="card-body">
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="fg">
-              <label>질문 (Question)</label>
-              <input 
-                className="fi" 
-                placeholder="질문을 입력하세요" 
-                value={formData.question}
-                onChange={(e) => setFormData({...formData, question: e.target.value})}
-              />
-            </div>
-            <div className="fg">
-              <label>답변 (Answer)</label>
-              <textarea 
-                className="fta" 
-                style={{ height: '120px' }}
-                placeholder="답변을 입력하세요"
-                value={formData.answer}
-                onChange={(e) => setFormData({...formData, answer: e.target.value})}
-              />
-            </div>
-            <div className="flex gap-2">
-              <button type="submit" className="btn btn-jade" disabled={loading}>
-                {loading ? <span className="spinner" style={{ width: '14px', height: '14px' }}></span> : <><i className="fa-solid fa-save"></i> {editingId ? '수정 완료' : '등록하기'}</>}
-              </button>
-              {editingId && (
-                <button type="button" className="btn" onClick={handleCancel}>취소</button>
-              )}
-            </div>
-          </form>
-        </div>
-      </div>
+      )}
 
       {/* 목록 */}
       <div className="card">
@@ -140,20 +148,24 @@ const FaqAdminPage = () => {
               ) : faqs.map((f, idx) => (
                 <tr key={f.id} style={{ borderBottom: '1px solid var(--line)' }}>
                   <td style={{ padding: '16px', verticalAlign: 'top' }}>
-                    <div className="flex flex-col gap-1">
-                      <button onClick={() => moveItem(idx, 'up')} disabled={idx === 0} className="ico-btn" style={{ opacity: idx === 0 ? 0.2 : 1 }}><i className="fa-solid fa-chevron-up"></i></button>
-                      <button onClick={() => moveItem(idx, 'down')} disabled={idx === faqs.length - 1} className="ico-btn" style={{ opacity: idx === faqs.length - 1 ? 0.2 : 1 }}><i className="fa-solid fa-chevron-down"></i></button>
-                    </div>
+                    {canManage && (
+                      <div className="flex flex-col gap-1">
+                        <button onClick={() => moveItem(idx, 'up')} disabled={idx === 0} className="ico-btn" style={{ opacity: idx === 0 ? 0.2 : 1 }}><i className="fa-solid fa-chevron-up"></i></button>
+                        <button onClick={() => moveItem(idx, 'down')} disabled={idx === faqs.length - 1} className="ico-btn" style={{ opacity: idx === faqs.length - 1 ? 0.2 : 1 }}><i className="fa-solid fa-chevron-down"></i></button>
+                      </div>
+                    )}
                   </td>
                   <td style={{ padding: '16px' }}>
                     <div style={{ fontWeight: 700, color: 'var(--head)', marginBottom: '6px' }}>Q. {f.question}</div>
                     <div style={{ fontSize: '.85rem', color: 'var(--muted)', lineHeight: 1.5 }}>A. {f.answer}</div>
                   </td>
                   <td style={{ padding: '16px', textAlign: 'right', verticalAlign: 'top' }}>
-                    <div className="flex gap-2 justify-end">
-                      <button className="ico-btn" onClick={() => handleEdit(f)}><i className="fa-solid fa-pen-to-square"></i></button>
-                      <button className="ico-btn reject" onClick={() => handleDelete(f.id)}><i className="fa-solid fa-trash-can"></i></button>
-                    </div>
+                    {canManage && (
+                      <div className="flex gap-2 justify-end">
+                        <button className="ico-btn" onClick={() => handleEdit(f)}><i className="fa-solid fa-pen-to-square"></i></button>
+                        <button className="ico-btn reject" onClick={() => handleDelete(f.id)}><i className="fa-solid fa-trash-can"></i></button>
+                      </div>
+                    )}
                   </td>
                 </tr>
               ))}

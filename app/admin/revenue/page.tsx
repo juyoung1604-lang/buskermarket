@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { DB } from '@/lib/supabase';
 import { useToast } from '@/components/admin/Toast';
+import { useAdmin } from '../layout';
 
 type RevRow = {
   id: string;
@@ -19,6 +20,7 @@ type RevRow = {
 };
 
 const RevenuePage = () => {
+  const { can } = useAdmin();
   const [buskers, setBuskers] = useState<any[]>([]);
   const [sellers, setSellers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -177,6 +179,7 @@ const RevenuePage = () => {
   };
 
   const handleMethodCycle = async (row: RevRow) => {
+    if (!can('edit')) return;
     const methods = ['계좌이체', '카드', '현금'];
     const curIdx = methods.indexOf(row.method);
     const nextMethod = methods[(curIdx + 1) % methods.length];
@@ -204,6 +207,7 @@ const RevenuePage = () => {
   };
 
   const handleStatusToggle = async (row: RevRow) => {
+    if (!can('edit')) return;
     const statusCycle: Record<string, string> = {
       unpaid: 'paid',
       paid: 'refunded',
@@ -388,9 +392,9 @@ const RevenuePage = () => {
                 <td>{r.item}</td>
                 <td className="td-mono">₩{r.amount.toLocaleString()}</td>
                 <td>
-                  <span 
-                    style={{ 
-                      cursor: 'pointer', 
+                  <span
+                    style={{
+                      cursor: can('edit') ? 'pointer' : 'default',
                       padding: '3px 10px', 
                       borderRadius: '100px',
                       fontSize: '.68rem',
@@ -411,8 +415,8 @@ const RevenuePage = () => {
                 <td>
                   <span
                     className={`badge b-${r.status === 'paid' ? 'approved' : r.status === 'refunded' ? 'rejected' : 'unpaid'}`}
-                    style={{ 
-                      cursor: 'pointer',
+                    style={{
+                      cursor: can('edit') ? 'pointer' : 'default',
                       background: r.status === 'refunded' ? 'var(--lav-bg)' : undefined,
                       color: r.status === 'refunded' ? 'var(--lav)' : undefined,
                       borderColor: r.status === 'refunded' ? 'var(--lav)' : undefined
