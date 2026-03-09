@@ -30,7 +30,6 @@ const HomepagePopupLayer = () => {
   const [popups, setPopups] = useState<HomepagePopup[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [mounted, setMounted] = useState(false);
-  const [hideForWeek, setHideForWeek] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     setMounted(true);
@@ -94,11 +93,9 @@ const HomepagePopupLayer = () => {
     });
   };
 
-  const handleClosePopup = () => {
-    if (typeof window !== 'undefined' && hideForWeek[popup.id]) {
-      const nextWeek = Date.now() + 7 * 24 * 60 * 60 * 1000;
-      localStorage.setItem(DISMISS_PREFIX + popup.id, String(nextWeek));
-    }
+  const handleDismissForWeek = () => {
+    const nextWeek = Date.now() + 7 * 24 * 60 * 60 * 1000;
+    localStorage.setItem(DISMISS_PREFIX + popup.id, String(nextWeek));
     closePopup();
   };
 
@@ -190,28 +187,36 @@ const HomepagePopupLayer = () => {
               </a>
             )}
           </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap', marginTop: '18px' }}>
-            <label style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', color: '#475569', fontSize: '.84rem', cursor: 'pointer' }}>
-              <input
-                type="checkbox"
-                checked={!!hideForWeek[popup.id]}
-                onChange={(e) =>
-                  setHideForWeek((prev) => ({
-                    ...prev,
-                    [popup.id]: e.target.checked,
-                  }))
-                }
-              />
-              일주일간 보지 않기
-            </label>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', marginTop: '18px' }}>
             <button
               type="button"
-              onClick={handleClosePopup}
+              onClick={handleDismissForWeek}
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
                 justifyContent: 'center',
+                gap: '6px',
                 padding: '10px 16px',
+                borderRadius: '999px',
+                border: '1px solid #cbd5e1',
+                background: '#f8fafc',
+                color: '#64748b',
+                fontSize: '.82rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              일주일간 닫기
+            </button>
+            <button
+              type="button"
+              onClick={closePopup}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '10px 20px',
                 borderRadius: '999px',
                 border: '1px solid #cbd5e1',
                 background: '#fff',
