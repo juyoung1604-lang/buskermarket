@@ -31,6 +31,100 @@ const GALLERY_LAYOUT_PATTERNS = [
   ]
 ];
 
+const ImageSettingItem = ({ item, images, onUpdate, onUpdateLayout, onReset }: any) => {
+  const current = images.find((img: any) => img.id === item.id);
+  const isGallery = 'defaultCaption' in item;
+  const defaultCaption = isGallery ? item.defaultCaption : undefined;
+  const defaultLayout = isGallery ? item.defaultLayout : undefined;
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  return (
+    <div key={item.id} style={{ borderTop: '1px solid var(--line)', paddingTop: '14px' }}>
+      <label style={{ display: 'block', fontSize: '.75rem', fontWeight: 700, color: 'var(--muted)', marginBottom: '8px' }}>{item.label}</label>
+      <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+        <div style={{ width: '80px', height: isGallery ? '80px' : '60px', borderRadius: '8px', overflow: 'hidden', backgroundColor: 'var(--ink3)', flexShrink: 0 }}>
+          <img src={current?.url || item.default} alt={item.label} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        </div>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          <input
+            ref={inputRef}
+            className="fi"
+            placeholder="이미지 URL을 입력하세요"
+            defaultValue={current?.url || ''}
+          />
+          {isGallery && (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px', marginTop: '4px' }}>
+              <div className="fg">
+                <label style={{ fontSize: '10px' }}>너비 (칸)</label>
+                <select
+                  className="fs"
+                  style={{ padding: '4px 8px', fontSize: '11px' }}
+                  value={current?.colSpan || item.defaultLayout?.colSpan}
+                  onChange={(e) => onUpdateLayout(item.id, { colSpan: e.target.value }, item.section, item.label)}
+                >
+                  <option value="col-span-1">1칸</option>
+                  <option value="col-span-1 md:col-span-2">2칸 (권장)</option>
+                  <option value="col-span-1 md:col-span-3">3칸 (전체)</option>
+                </select>
+              </div>
+              <div className="fg">
+                <label style={{ fontSize: '10px' }}>높이 (줄)</label>
+                <select
+                  className="fs"
+                  style={{ padding: '4px 8px', fontSize: '11px' }}
+                  value={current?.rowSpan || item.defaultLayout?.rowSpan}
+                  onChange={(e) => onUpdateLayout(item.id, { rowSpan: e.target.value }, item.section, item.label)}
+                >
+                  <option value="row-span-1">1줄</option>
+                  <option value="md:row-span-2">2줄 (세로형)</option>
+                </select>
+              </div>
+              <div className="fg">
+                <label style={{ fontSize: '10px' }}>최소 높이</label>
+                <input
+                  className="fi"
+                  style={{ padding: '4px 8px', fontSize: '11px' }}
+                  placeholder="220px"
+                  defaultValue={current?.minHeight || item.defaultLayout?.minHeight}
+                  onBlur={(e) => onUpdateLayout(item.id, { minHeight: e.target.value }, item.section, item.label)}
+                />
+              </div>
+            </div>
+          )}
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+          <button 
+            className="btn btn-jade" 
+            onClick={() => {
+              const val = inputRef.current?.value;
+              if (val !== undefined) {
+                onUpdate(item.id, val, item.section, item.label);
+              }
+            }} 
+            title="수정사항 저장" 
+            style={{ padding: '6px 10px', height: '32px' }}
+          >
+            <i className="fa-solid fa-save"></i>
+          </button>
+          <button 
+            className="btn" 
+            onClick={() => {
+              if (confirm('기본 이미지로 복원하시겠습니까?')) {
+                onReset(item.id, item.default, item.section, item.label, defaultCaption, defaultLayout);
+                if (inputRef.current) inputRef.current.value = item.default;
+              }
+            }} 
+            title="기본값으로 복원" 
+            style={{ padding: '6px 10px', height: '32px' }}
+          >
+            <i className="ri-restart-line"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export default function SettingsManager({ mode = 'all' }: { mode?: SettingsViewMode }) {
   const { toast } = useToast();
   const { can } = useAdmin();
@@ -268,101 +362,16 @@ export default function SettingsManager({ mode = 'all' }: { mode?: SettingsViewM
                       )}
                     </div>
                     <div className="space-y-4">
-                      {group.items.map((item) => {
-                        const current = images.find((img) => img.id === item.id);
-                        const isGallery = 'defaultCaption' in item;
-                        const defaultCaption = isGallery ? item.defaultCaption : undefined;
-                        const defaultLayout = isGallery ? item.defaultLayout : undefined;
-                        
-                        // Local state for each input to handle changes before saving
-                        const inputRef = useRef<HTMLInputElement>(null);
-
-                        return (
-                          <div key={item.id} style={{ borderTop: '1px solid var(--line)', paddingTop: '14px' }}>
-                            <label style={{ display: 'block', fontSize: '.75rem', fontWeight: 700, color: 'var(--muted)', marginBottom: '8px' }}>{item.label}</label>
-                            <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
-                              <div style={{ width: '80px', height: isGallery ? '80px' : '60px', borderRadius: '8px', overflow: 'hidden', backgroundColor: 'var(--ink3)', flexShrink: 0 }}>
-                                <img src={current?.url || item.default} alt={item.label} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                              </div>
-                              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                                <input
-                                  ref={inputRef}
-                                  className="fi"
-                                  placeholder="이미지 URL을 입력하세요"
-                                  defaultValue={current?.url || ''}
-                                />
-                                {isGallery && (
-                                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px', marginTop: '4px' }}>
-                                    <div className="fg">
-                                      <label style={{ fontSize: '10px' }}>너비 (칸)</label>
-                                      <select
-                                        className="fs"
-                                        style={{ padding: '4px 8px', fontSize: '11px' }}
-                                        value={current?.colSpan || item.defaultLayout?.colSpan}
-                                        onChange={(e) => handleUpdateLayout(item.id, { colSpan: e.target.value }, item.section, item.label)}
-                                      >
-                                        <option value="col-span-1">1칸</option>
-                                        <option value="col-span-1 md:col-span-2">2칸 (권장)</option>
-                                        <option value="col-span-1 md:col-span-3">3칸 (전체)</option>
-                                      </select>
-                                    </div>
-                                    <div className="fg">
-                                      <label style={{ fontSize: '10px' }}>높이 (줄)</label>
-                                      <select
-                                        className="fs"
-                                        style={{ padding: '4px 8px', fontSize: '11px' }}
-                                        value={current?.rowSpan || item.defaultLayout?.rowSpan}
-                                        onChange={(e) => handleUpdateLayout(item.id, { rowSpan: e.target.value }, item.section, item.label)}
-                                      >
-                                        <option value="row-span-1">1줄</option>
-                                        <option value="md:row-span-2">2줄 (세로형)</option>
-                                      </select>
-                                    </div>
-                                    <div className="fg">
-                                      <label style={{ fontSize: '10px' }}>최소 높이</label>
-                                      <input
-                                        className="fi"
-                                        style={{ padding: '4px 8px', fontSize: '11px' }}
-                                        placeholder="220px"
-                                        defaultValue={current?.minHeight || item.defaultLayout?.minHeight}
-                                        onBlur={(e) => handleUpdateLayout(item.id, { minHeight: e.target.value }, item.section, item.label)}
-                                      />
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                <button 
-                                  className="btn btn-jade" 
-                                  onClick={() => {
-                                    const val = inputRef.current?.value;
-                                    if (val !== undefined) {
-                                      handleUpdateImage(item.id, val, item.section, item.label);
-                                    }
-                                  }} 
-                                  title="수정사항 저장" 
-                                  style={{ padding: '6px 10px', height: '32px' }}
-                                >
-                                  <i className="fa-solid fa-save"></i>
-                                </button>
-                                <button 
-                                  className="btn" 
-                                  onClick={() => {
-                                    if (confirm('기본 이미지로 복원하시겠습니까?')) {
-                                      handleResetImage(item.id, item.default, item.section, item.label, defaultCaption, defaultLayout);
-                                      if (inputRef.current) inputRef.current.value = item.default;
-                                    }
-                                  }} 
-                                  title="기본값으로 복원" 
-                                  style={{ padding: '6px 10px', height: '32px' }}
-                                >
-                                  <i className="ri-restart-line"></i>
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
+                      {group.items.map((item) => (
+                        <ImageSettingItem
+                          key={item.id}
+                          item={item}
+                          images={images}
+                          onUpdate={handleUpdateImage}
+                          onUpdateLayout={handleUpdateLayout}
+                          onReset={handleResetImage}
+                        />
+                      ))}
                     </div>
                   </div>
                 ))}
