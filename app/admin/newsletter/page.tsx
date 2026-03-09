@@ -439,8 +439,8 @@ const NewsletterPage = () => {
                   />
                 </div>
               </div>
-              <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <div className="nl-sub-scroll" style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                <table className="nl-sub-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead style={{ position: 'sticky', top: 0, background: 'var(--ink3)', zIndex: 10, borderBottom: '1px solid var(--line)' }}>
                     <tr>
                       <th style={{ padding: '10px 16px', width: '40px', textAlign: 'left' }}>

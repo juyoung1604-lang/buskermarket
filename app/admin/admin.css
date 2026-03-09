@@ -583,6 +583,28 @@ td {
 }
 .spinner-lg { width: 24px; height: 24px; border-width: 3px; }
 
+.revenue-grid { display: grid; grid-template-columns: 1.6fr 1fr; gap: 14px; }
+.popup-mgr-grid { display: grid; grid-template-columns: 1.15fr 1fr; gap: 16px; align-items: start; }
+.pm-form { order: 1; }
+.pm-list { order: 2; }
+.newsletter-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 2fr;
+  grid-template-areas:
+    "gmail compose"
+    "template compose"
+    "subscribers compose";
+  gap: 24px;
+  align-items: start;
+}
+.nl-gmail { grid-area: gmail; }
+.nl-template { grid-area: template; }
+.nl-compose { grid-area: compose; }
+.nl-subscribers { grid-area: subscribers; }
+.acc-level-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+.accounts-main-grid { display: grid; grid-template-columns: 1fr 320px; gap: 14px; }
+.supa-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
 /* ════ MOBILE RESPONSIVE ════ */
 @media (max-width: 1024px) {
   :root {
@@ -591,6 +613,9 @@ td {
   }
   .kpi-row { grid-template-columns: repeat(2, 1fr); }
   .dashboard-main-grid { grid-template-columns: 1fr !important; }
+  .popup-mgr-grid { display: flex; flex-direction: column; gap: 16px; }
+  .pm-form { order: 1; }
+  .pm-list { order: 2; }
 }
 
 @media (max-width: 768px) {
@@ -652,9 +677,14 @@ td {
   .pm-list { order: 2; }
 
   .newsletter-grid { display: flex; flex-direction: column; gap: 16px; }
-  .nl-left { order: 1; }
-  .nl-right { order: 2; }
-  .nl-right .fta { height: 300px !important; } /* 뉴스레터 본문 높이 조절 */
+  .nl-gmail { order: 1; }
+  .nl-template { order: 2; }
+  .nl-subscribers { order: 3; }
+  .nl-compose { order: 4; }
+  .nl-compose .fta { height: 300px !important; } /* 뉴스레터 본문 높이 조절 */
+  .nl-sub-scroll { max-height: 50vh !important; }
+  .nl-sub-table { min-width: auto !important; }
+  .nl-sub-table td, .nl-sub-table th { word-break: break-all; }
 
   .supa-grid { display: flex; flex-direction: column; }
 
@@ -668,12 +698,3 @@ td {
 
 /* Helper for Sidebar Close button hidden on desktop */
 .sb-close-mobile { display: none; }
-
-.revenue-grid { display: grid; grid-template-columns: 1.6fr 1fr; gap: 14px; }
-.popup-mgr-grid { display: grid; grid-template-columns: 1.15fr 1fr; gap: 16px; align-items: start; }
-.pm-form { order: 1; }
-.pm-list { order: 2; }
-.newsletter-grid { display: grid; grid-template-columns: 1.2fr 2fr; gap: 24px; alignItems: start; }
-.acc-level-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
-.accounts-main-grid { display: grid; grid-template-columns: 1fr 320px; gap: 14px; }
-.supa-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
