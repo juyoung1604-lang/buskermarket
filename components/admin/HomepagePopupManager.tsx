@@ -34,10 +34,175 @@ const POPUP_SIZE_OPTIONS = [
   { value: 'lg', label: '크게' },
 ] as const;
 
+const POPUP_WIDTHS = {
+  sm: 'min(88vw, 420px)',
+  md: 'min(92vw, 560px)',
+  lg: 'min(94vw, 720px)',
+} as const;
+
+const PopupPreviewModal = ({
+  data,
+  onClose,
+}: {
+  data: Partial<HomepagePopup>;
+  onClose: () => void;
+}) => {
+  const popupWidth =
+    data.popup_width_px && data.popup_width_px > 0
+      ? `min(96vw, ${Math.min(1200, Math.max(240, data.popup_width_px))}px)`
+      : POPUP_WIDTHS[data.popup_size || 'md'];
+  const popupHeight =
+    data.popup_height_px && data.popup_height_px > 0
+      ? `min(92vh, ${Math.min(1400, Math.max(240, data.popup_height_px))}px)`
+      : undefined;
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 9999,
+        background: 'rgba(15, 23, 42, 0.7)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '20px',
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          width: popupWidth,
+          height: popupHeight,
+          maxHeight: '92vh',
+          borderRadius: '24px',
+          overflow: 'hidden',
+          background: '#fff',
+          boxShadow: '0 30px 80px rgba(15, 23, 42, 0.35)',
+          display: 'flex',
+          flexDirection: 'column',
+        }}
+      >
+        <div
+          style={{
+            position: 'relative',
+            aspectRatio: popupHeight ? undefined : '4 / 5',
+            background: '#f8fafc',
+            flex: popupHeight ? '1 1 auto' : undefined,
+            minHeight: popupHeight ? '180px' : undefined,
+          }}
+        >
+          {data.image_url ? (
+            <img src={data.image_url} alt={data.title || ''} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          ) : (
+            <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '.9rem' }}>
+              이미지 URL을 입력하세요
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="미리보기 닫기"
+            style={{
+              position: 'absolute',
+              top: '12px',
+              right: '12px',
+              width: '36px',
+              height: '36px',
+              borderRadius: '999px',
+              border: 0,
+              background: 'rgba(15, 23, 42, 0.72)',
+              color: '#fff',
+              cursor: 'pointer',
+              fontSize: '1rem',
+            }}
+          >
+            ×
+          </button>
+          <div style={{ position: 'absolute', top: '12px', left: '12px', background: 'rgba(15,23,42,0.6)', color: '#fff', fontSize: '.65rem', fontWeight: 700, padding: '4px 10px', borderRadius: '999px' }}>
+            미리보기
+          </div>
+        </div>
+
+        <div style={{ padding: '20px', overflowY: popupHeight ? 'auto' : undefined }}>
+          <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0f172a' }}>{data.title || '(제목 없음)'}</div>
+          {data.content && (
+            <div style={{ fontSize: '.92rem', color: '#475569', lineHeight: 1.6, marginTop: '10px', whiteSpace: 'pre-line' }}>
+              {data.content}
+            </div>
+          )}
+          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '18px' }}>
+            {data.link_url && (
+              <span
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: '10px 16px',
+                  borderRadius: '999px',
+                  background: '#0f766e',
+                  color: '#fff',
+                  fontSize: '.85rem',
+                  fontWeight: 700,
+                }}
+              >
+                {data.button_label || '자세히 보기'}
+              </span>
+            )}
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', marginTop: '18px' }}>
+            <button
+              type="button"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px',
+                padding: '10px 16px',
+                borderRadius: '999px',
+                border: '1px solid #cbd5e1',
+                background: '#f8fafc',
+                color: '#64748b',
+                fontSize: '.82rem',
+                fontWeight: 600,
+                cursor: 'default',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              일주일간 닫기
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '10px 20px',
+                borderRadius: '999px',
+                border: '1px solid #cbd5e1',
+                background: '#fff',
+                color: '#334155',
+                fontSize: '.85rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+              }}
+            >
+              닫기
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const HomepagePopupManager = () => {
   const { toast } = useToast();
   const [popups, setPopups] = useState<HomepagePopup[]>([]);
   const [editingPopupId, setEditingPopupId] = useState<string | null>(null);
+  const [previewData, setPreviewData] = useState<Partial<HomepagePopup> | null>(null);
   const [popupForm, setPopupForm] = useState<Partial<HomepagePopup>>({
     title: '',
     image_url: '',
@@ -199,15 +364,14 @@ const HomepagePopupManager = () => {
   };
 
   return (
+    <>
+    {previewData && <PopupPreviewModal data={previewData} onClose={() => setPreviewData(null)} />}
     <div className="card">
       <div className="card-h" style={{ background: 'var(--ink3)' }}>
         <span className="card-title">
           <i className="fa-solid fa-window-maximize" style={{ marginRight: '8px', color: 'var(--gold)' }} />
           홈페이지 팝업 관리
         </span>
-        <button className="btn" style={{ fontSize: '.72rem' }} onClick={resetPopupForm}>
-          <i className="fa-solid fa-rotate-left" /> 새 팝업
-        </button>
       </div>
 
       <div className="card-body space-y-4">
@@ -294,9 +458,12 @@ const HomepagePopupManager = () => {
               </div>
             </div>
 
-            <div style={{ display: 'flex', gap: '8px', marginTop: '14px' }}>
+            <div style={{ display: 'flex', gap: '8px', marginTop: '14px', flexWrap: 'wrap' }}>
               <button className="btn btn-jade" onClick={handleSavePopup}>
                 <i className="fa-solid fa-floppy-disk" /> {editingPopupId ? '팝업 수정' : '팝업 등록'}
+              </button>
+              <button className="btn" onClick={() => setPreviewData(popupForm)}>
+                <i className="fa-solid fa-eye" /> 미리보기
               </button>
               <button className="btn" onClick={resetPopupForm}>
                 <i className="fa-solid fa-xmark" /> 초기화
@@ -343,6 +510,9 @@ const HomepagePopupManager = () => {
                           </div>
                         )}
                         <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '10px' }}>
+                          <button className="btn" style={{ fontSize: '.68rem' }} onClick={() => setPreviewData(popup)}>
+                            <i className="fa-solid fa-eye" /> 미리보기
+                          </button>
                           <button className="btn" style={{ fontSize: '.68rem' }} onClick={() => handleEditPopup(popup)}>
                             <i className="fa-solid fa-pen-to-square" /> 수정
                           </button>
@@ -365,6 +535,7 @@ const HomepagePopupManager = () => {
         </div>
       </div>
     </div>
+    </>
   );
 };
 

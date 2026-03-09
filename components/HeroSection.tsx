@@ -15,13 +15,13 @@ export default function HeroSection() {
     const loadImg = async () => {
       const imgs = await DB.getImages();
       const hero = imgs?.find((i: any) => i.id === 'img-hero' && i.active);
-      if (active && hero?.url && hero.url !== heroImg) {
+      if (active && hero?.url) {
         setHeroImg(hero.url);
       }
     };
     loadImg();
     return () => { active = false; };
-  }, [heroImg]);
+  }, []);
 
   const handleScrollTo = (href: string) => {
     const el = document.querySelector(href);

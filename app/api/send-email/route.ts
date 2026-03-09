@@ -8,8 +8,8 @@ export async function POST(request: Request) {
     const { recipients, subject, content, supabaseUrl, supabaseKey } = await request.json();
 
     // Env vars take priority — persistent across all deployments
-    let gmailUser = process.env.GMAIL_USER || '';
-    let gmailPass = process.env.GMAIL_APP_PASSWORD || '';
+    let gmailUser = (process.env.GMAIL_USER || '').trim();
+    let gmailPass = (process.env.GMAIL_APP_PASSWORD || '').replace(/\s+/g, '').trim();
 
     // Fall back to Supabase-stored config if env vars not set
     if (!gmailUser || !gmailPass) {
@@ -21,11 +21,18 @@ export async function POST(request: Request) {
         url: String(supabaseUrl || '').trim(),
         key: String(supabaseKey || '').trim(),
       });
-      gmailUser = gmailUser || gmailConfig?.email || '';
-      gmailPass = gmailPass || gmailConfig?.appPassword || '';
+      gmailUser = gmailUser || (gmailConfig?.email || '').trim();
+      // Remove spaces — Google displays App Passwords as "xxxx xxxx xxxx xxxx"
+      gmailPass = gmailPass || (gmailConfig?.appPassword || '').replace(/\s+/g, '').trim();
     }
 
-    if (!gmailUser || !gmailPass || !recipients || !subject || !content) {
+    if (!gmailUser || !gmailPass) {
+      return NextResponse.json({
+        error: 'Gmail 계정이 설정되지 않았습니다. 관리자 > 뉴스레터에서 Gmail 연동을 완료하거나 서버 환경변수(GMAIL_USER, GMAIL_APP_PASSWORD)를 설정하세요.',
+      }, { status: 400 });
+    }
+
+    if (!recipients?.length || !subject || !content) {
       return NextResponse.json({ error: '필수 정보가 누락되었습니다.' }, { status: 400 });
     }
 
@@ -38,11 +45,15 @@ export async function POST(request: Request) {
       },
     });
 
-    // Send emails
-    // For many recipients, it's better to use Bcc or send in chunks, but for simplicity:
+    // Exclude sender from BCC list to avoid duplicate receipt
+    const bccList = (recipients as string[]).filter(
+      (r) => r.trim().toLowerCase() !== gmailUser.toLowerCase()
+    );
+
     const mailOptions = {
       from: `송도 버스킹 마켓 <${gmailUser}>`,
-      to: recipients.join(', '),
+      to: gmailUser, // sender receives as primary (delivery receipt)
+      bcc: bccList.join(', '),
       subject: subject,
       html: `
         <div style="font-family: 'Noto Sans KR', sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; borderRadius: 15px;">
@@ -63,6 +74,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: true, messageId: info.messageId });
   } catch (error: any) {
     console.error('Email send error:', error);
-    return NextResponse.json({ error: error.message || '메일 발송에 실패했습니다.' }, { status: 500 });
+    let errorMsg = error.message || '메일 발송에 실패했습니다.';
+    if (error.responseCode === 535 || errorMsg.includes('BadCredentials') || errorMsg.includes('Username and Password not accepted')) {
+      errorMsg = 'Gmail 인증 실패: 앱 비밀번호가 올바르지 않습니다. Google 계정 > 보안 > 2단계 인증 활성화 후 앱 비밀번호를 발급받아 입력하세요.';
+    }
+    return NextResponse.json({ error: errorMsg }, { status: 500 });
   }
 }
