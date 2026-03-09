@@ -4,6 +4,12 @@ import React, { useEffect, useState } from 'react';
 import { DB } from '@/lib/supabase';
 import { useToast } from '@/components/admin/Toast';
 
+const getSupabaseConfig = () => {
+  const config = DB.getConnectionConfig();
+  return { supabaseUrl: config?.url || '', supabaseKey: config?.key || '' };
+};
+
+
 type HomepagePopup = {
   id: string;
   title: string;
@@ -48,8 +54,16 @@ const HomepagePopupManager = () => {
   });
 
   const fetchPopups = async () => {
-    const popupData = await DB.getHomepagePopups();
-    setPopups((popupData as HomepagePopup[]) || []);
+    try {
+      const { supabaseUrl, supabaseKey } = getSupabaseConfig();
+      const params = new URLSearchParams({ supabaseUrl, supabaseKey, admin: '1' });
+      const res = await fetch(`/api/popups?${params}`, { cache: 'no-store' });
+      const data = await res.json();
+      setPopups((data.popups as HomepagePopup[]) || []);
+    } catch {
+      const fallback = await DB.getHomepagePopups();
+      setPopups((fallback as HomepagePopup[]) || []);
+    }
   };
 
   useEffect(() => {
@@ -123,12 +137,25 @@ const HomepagePopupManager = () => {
       open_in_new_tab: !!popupForm.open_in_new_tab,
     };
 
-    const res = editingPopupId
-      ? await DB.updateHomepagePopup(editingPopupId, payload)
-      : await DB.createHomepagePopup(payload);
+    const { supabaseUrl, supabaseKey } = getSupabaseConfig();
+    let res: Response;
+    if (editingPopupId) {
+      res = await fetch(`/api/popups/${editingPopupId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...payload, supabaseUrl, supabaseKey }),
+      });
+    } else {
+      res = await fetch('/api/popups', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...payload, supabaseUrl, supabaseKey }),
+      });
+    }
 
-    if ((res as any)?.error) {
-      toast('팝업 저장 실패: ' + (res as any).error.message, 'rose');
+    const result = await res.json();
+    if (!res.ok) {
+      toast('팝업 저장 실패: ' + (result.error || '알 수 없는 오류'), 'rose');
       return;
     }
 
@@ -139,22 +166,32 @@ const HomepagePopupManager = () => {
 
   const handleDeletePopup = async (id: string) => {
     if (!confirm('이 팝업을 삭제하시겠습니까?')) return;
-    const { error } = await DB.deleteHomepagePopup(id);
-    if (error) {
-      toast('팝업 삭제 실패: ' + (error as any).message, 'rose');
+    const { supabaseUrl, supabaseKey } = getSupabaseConfig();
+    const res = await fetch(`/api/popups/${id}`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ supabaseUrl, supabaseKey }),
+    });
+    const result = await res.json();
+    if (!res.ok) {
+      toast('팝업 삭제 실패: ' + (result.error || '알 수 없는 오류'), 'rose');
       return;
     }
-    if (editingPopupId === id) {
-      resetPopupForm();
-    }
+    if (editingPopupId === id) resetPopupForm();
     toast('홈페이지 팝업이 삭제되었습니다.', 'jade');
     fetchPopups();
   };
 
   const togglePopupActive = async (popup: HomepagePopup) => {
-    const { error } = await DB.updateHomepagePopup(popup.id, { is_active: !popup.is_active });
-    if (error) {
-      toast('상태 변경 실패: ' + (error as any).message, 'rose');
+    const { supabaseUrl, supabaseKey } = getSupabaseConfig();
+    const res = await fetch(`/api/popups/${popup.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ is_active: !popup.is_active, supabaseUrl, supabaseKey }),
+    });
+    const result = await res.json();
+    if (!res.ok) {
+      toast('상태 변경 실패: ' + (result.error || '알 수 없는 오류'), 'rose');
       return;
     }
     toast(popup.is_active ? '팝업 노출이 중지되었습니다.' : '팝업이 활성화되었습니다.', 'jade');

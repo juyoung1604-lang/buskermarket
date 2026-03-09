@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { DB } from '@/lib/supabase';
 
 type HomepagePopup = {
   id: string;
@@ -35,9 +34,18 @@ const HomepagePopupLayer = () => {
 
   useEffect(() => {
     setMounted(true);
-    DB.getHomepagePopups().then((data) => {
-      setPopups((data as HomepagePopup[]) || []);
-    });
+    // Use server API so popups load regardless of client-side Supabase config
+    const supabaseUrl =
+      (typeof window !== 'undefined' && localStorage.getItem('supabase_url')) ||
+      process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+    const supabaseKey =
+      (typeof window !== 'undefined' && localStorage.getItem('supabase_key')) ||
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+    const params = new URLSearchParams({ supabaseUrl, supabaseKey });
+    fetch(`/api/popups?${params}`)
+      .then((r) => r.json())
+      .then((data) => setPopups((data.popups as HomepagePopup[]) || []))
+      .catch(() => setPopups([]));
   }, []);
 
   const visiblePopups = useMemo(() => {
