@@ -4,11 +4,15 @@
 import React, { useEffect, useState } from 'react';
 import { DB, supabase } from '@/lib/supabase';
 import { useToast } from '@/components/admin/Toast';
+import { useAdmin } from '../layout';
 
 const SupabasePage = () => {
+  const { role } = useAdmin();
+  const isMaster = role === 'master_admin';
   const [queue, setQueue] = useState<any[]>([]);
   const { toast } = useToast();
   const [syncing, setSyncing] = useState(false);
+  const [status, setStatus] = useState<'connected' | 'disconnected' | 'offline'>('disconnected');
   const [config, setConfig] = useState({
     url: '',
     key: ''
@@ -23,16 +27,37 @@ const SupabasePage = () => {
       url: current.url,
       key: current.key,
     });
+
+    const checkStatus = async () => {
+      const isConfigured = DB.isConfigured();
+      if (!window.navigator.onLine) { setStatus('offline'); return; }
+      if (!isConfigured) { setStatus('disconnected'); return; }
+      try {
+        const { error } = await supabase.from('admin_logs').select('id').limit(1);
+        setStatus(error ? 'disconnected' : 'connected');
+      } catch (e) { setStatus('disconnected'); }
+    };
+    checkStatus();
   }, []);
 
   const handleSaveConfig = () => {
-    const { error } = DB.saveConnectionConfig(config);
-    if (error) {
-      toast(error.message, 'rose');
+    if (!config.url || !config.key) {
+      toast('URL과 Key를 모두 입력해주세요.', 'rose');
       return;
     }
-    toast('설정이 저장되었습니다. 페이지를 새로고침하여 반영하세요.', 'jade');
-    setTimeout(() => window.location.reload(), 1500);
+    const { success } = DB.saveConnectionConfig(config);
+    if (success) {
+      toast('설정이 저장되었습니다. 페이지를 새로고침하여 반영하세요.', 'jade');
+      setTimeout(() => window.location.reload(), 1000);
+    }
+  };
+
+  const handleDisconnect = () => {
+    if (confirm('현재 브라우저에 저장된 Supabase 연결 설정을 해제하시겠습니까? (서버 환경변수 기본값으로 복구됩니다)')) {
+      DB.clearConnectionConfig();
+      toast('연결 설정이 해제되었습니다.', 'sky');
+      setTimeout(() => window.location.reload(), 1000);
+    }
   };
 
   const handleSync = async () => {
@@ -364,7 +389,16 @@ $$;
       <div className="supa-grid">
         <div className="supa-left space-y-4">
           <div className="card">
-            <div className="card-h"><span className="card-title">연결 정보</span></div>
+            <div className="card-h" style={{ justifyContent: 'space-between' }}>
+              <span className="card-title">연결 정보</span>
+              <span className="badge" style={{ 
+                background: status === 'connected' ? 'var(--jdim)' : status === 'offline' ? 'var(--rdim)' : 'var(--gdim)',
+                color: status === 'connected' ? 'var(--jade)' : status === 'offline' ? 'var(--rose)' : 'var(--gold)',
+                border: '1px solid currentColor'
+              }}>
+                {status === 'connected' ? '연결됨' : status === 'offline' ? '오프라인' : '미연결'}
+              </span>
+            </div>
             <div className="card-body">
               <div className="space-y-4">
                 <div>
@@ -374,8 +408,8 @@ $$;
                     type="text" 
                     value={config.url} 
                     onChange={(e) => setConfig({ ...config, url: e.target.value })}
-                    disabled={configSource === 'env'}
-                    style={{ width: '100%', padding: '9px 12px', background: 'var(--ink3)', border: '1px solid var(--line2)', borderRadius: '6px', color: 'var(--head)' }} 
+                    disabled={!isMaster}
+                    style={{ width: '100%', padding: '9px 12px', background: 'var(--ink3)', border: '1px solid var(--line2)', borderRadius: '6px', color: 'var(--head)', opacity: isMaster ? 1 : 0.6 }} 
                   />
                 </div>
                 <div>
@@ -385,20 +419,26 @@ $$;
                     type="password" 
                     value={config.key} 
                     onChange={(e) => setConfig({ ...config, key: e.target.value })}
-                    disabled={configSource === 'env'}
-                    style={{ width: '100%', padding: '9px 12px', background: 'var(--ink3)', border: '1px solid var(--line2)', borderRadius: '6px', color: 'var(--head)' }} 
+                    disabled={!isMaster}
+                    style={{ width: '100%', padding: '9px 12px', background: 'var(--ink3)', border: '1px solid var(--line2)', borderRadius: '6px', color: 'var(--head)', opacity: isMaster ? 1 : 0.6 }} 
                   />
                 </div>
                 <div style={{ fontSize: '.72rem', color: 'var(--muted)', lineHeight: 1.6 }}>
                   {configSource === 'env'
-                    ? '현재 배포 환경은 서버 ENV 기반으로 연결됩니다. 이 값은 브라우저에서 바꿔도 적용되지 않습니다.'
-                    : '로컬 브라우저 설정을 사용 중입니다. 개발 환경에서만 변경 저장이 가능합니다.'}
+                    ? '현재 서버 기본 설정(ENV)을 사용 중입니다. 변경하려면 위 필드에 새 정보를 입력하고 저장하세요.'
+                    : '현재 브라우저 로컬 설정을 사용 중입니다. [서버연결 해지]를 누르면 기본값으로 복구됩니다.'}
+                  {!isMaster && <p style={{ color: 'var(--rose)', marginTop: '4px' }}>* 이 설정은 마스터관리자만 변경할 수 있습니다.</p>}
                 </div>
                 <div style={{ display: 'flex', gap: '8px' }}>
-                  <button className="btn btn-jade" style={{ flex: 1, justifyContent: 'center' }} onClick={handleSaveConfig} disabled={configSource === 'env'}>
+                  <button className="btn btn-jade" style={{ flex: 1, justifyContent: 'center' }} onClick={handleSaveConfig} disabled={!isMaster}>
                     <i className="fa-solid fa-save"></i> 저장 및 재연결
                   </button>
-                  <button className="btn" style={{ flex: 1, justifyContent: 'center' }} onClick={handleTestConnection}>
+                  <button className="btn" style={{ flex: 1, justifyContent: 'center' }} onClick={handleDisconnect} disabled={!isMaster || configSource === 'env'}>
+                    <i className="fa-solid fa-link-slash"></i> 서버연결 해지
+                  </button>
+                </div>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button className="btn btn-ghost" style={{ flex: 1, justifyContent: 'center', background: 'var(--ink4)' }} onClick={handleTestConnection}>
                     <i className="fa-solid fa-plug"></i> 연결 테스트
                   </button>
                 </div>

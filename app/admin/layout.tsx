@@ -98,18 +98,40 @@ const PermissionBanner = ({ role, roles }: { role: string, roles: any }) => {
 };
 
 const SupabaseStatusBar = () => {
-  const [online, setOnline] = useState(true);
+  const [status, setStatus] = useState<'connected' | 'disconnected' | 'offline'>('disconnected');
   const [queueCount, setQueueCount] = useState(0);
 
   useEffect(() => {
-    const checkStatus = () => {
-      setOnline(typeof window !== 'undefined' ? window.navigator.onLine : true);
+    const checkStatus = async () => {
+      if (typeof window === 'undefined') return;
+      
+      const isConfigured = DB.isConfigured();
       setQueueCount(DB.getQueue().length);
+
+      if (!window.navigator.onLine) {
+        setStatus('offline');
+        return;
+      }
+
+      if (!isConfigured) {
+        setStatus('disconnected');
+        return;
+      }
+
+      try {
+        // Simple ping to check connection
+        const { error } = await supabase.from('admin_logs').select('id').limit(1);
+        if (error) throw error;
+        setStatus('connected');
+      } catch (e) {
+        setStatus('disconnected');
+      }
     };
+
     checkStatus();
     window.addEventListener('online', checkStatus);
     window.addEventListener('offline', checkStatus);
-    const interval = setInterval(checkStatus, 3000);
+    const interval = setInterval(checkStatus, 10000); // Check every 10s
     return () => {
       window.removeEventListener('online', checkStatus);
       window.removeEventListener('offline', checkStatus);
@@ -117,14 +139,26 @@ const SupabaseStatusBar = () => {
     };
   }, []);
 
+  const getStatusColor = () => {
+    if (status === 'connected') return 'var(--jade)';
+    if (status === 'offline') return 'var(--rose)';
+    return 'var(--gold)';
+  };
+
+  const getStatusText = () => {
+    if (status === 'connected') return '연결됨';
+    if (status === 'offline') return '오프라인';
+    return '미연결';
+  };
+
   return (
     <div className="info-strip supa-bar">
       <div className="info-strip-content">
         <div className="supa-logo" style={{ display: 'flex', alignItems: 'center', gap: '5px', fontFamily: 'var(--font-mono)', fontWeight: 500, color: 'var(--soft)' }}>
-          <i className="fa-solid fa-database" style={{ color: '#3ECF8E' }}></i> Supabase
+          <i className="fa-solid fa-database" style={{ color: status === 'connected' ? '#3ECF8E' : 'var(--muted)' }}></i> Supabase
         </div>
-        <div className={`dot-pulse ${online ? 'dot-jade' : 'dot-gold'}`} style={{ width: '7px', height: '7px', borderRadius: '50%', background: online ? 'var(--jade)' : 'var(--gold)', boxShadow: online ? '0 0 6px var(--jade)' : '0 0 6px var(--gold)' }}></div>
-        <span className="supa-status-text" style={{ color: 'var(--soft)', fontFamily: 'var(--font-mono)' }}>{online ? '연결됨' : '미연결'}</span>
+        <div className="dot-pulse" style={{ width: '7px', height: '7px', borderRadius: '50%', background: getStatusColor(), boxShadow: `0 0 6px ${getStatusColor()}` }}></div>
+        <span className="supa-status-text" style={{ color: 'var(--soft)', fontFamily: 'var(--font-mono)' }}>{getStatusText()}</span>
         {queueCount > 0 && <span style={{ color: 'var(--gold)', fontFamily: 'var(--font-mono)' }}>(미동기화 {queueCount}건)</span>}
       </div>
     </div>

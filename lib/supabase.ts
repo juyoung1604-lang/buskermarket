@@ -4,16 +4,26 @@ import { createClient } from '@supabase/supabase-js';
 const getConfig = () => {
   const envUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
   const envKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-  if (typeof window === 'undefined') return { url: envUrl, key: envKey };
+  
+  if (typeof window === 'undefined') return { url: envUrl, key: envKey, source: 'env' };
+  
+  const savedUrl = localStorage.getItem('supabase_url');
+  const savedKey = localStorage.getItem('supabase_key');
+  
+  if (savedUrl && savedKey) {
+    return { url: savedUrl, key: savedKey, source: 'browser' };
+  }
+  
   return {
     url: envUrl,
-    key: envKey
+    key: envKey,
+    source: 'env'
   };
 };
 
 // Create client with current config
-const { url, key } = getConfig();
-export const supabase = createClient(url || 'https://placeholder.supabase.co', key || 'placeholder');
+const config = getConfig();
+export const supabase = createClient(config.url || 'https://placeholder.supabase.co', config.key || 'placeholder');
 
 // Helper for DB operations with local caching
 const CACHE_PREFIX = 'songdo_cache_';
@@ -27,7 +37,16 @@ const APP_SETTING_NAMES = {
   roles: 'admin_dynamic_roles',
 } as const;
 
-const memoryStore: Record<string, any> = {};
+const memoryStore: Record<string, any> = (typeof window !== 'undefined') 
+  ? JSON.parse(localStorage.getItem('songdo_memory_store') || '{}') 
+  : {};
+
+const saveToLocalStorage = () => {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('songdo_memory_store', JSON.stringify(memoryStore));
+  }
+};
+
 const memoryCacheStore: Record<string, { data: any; ts: number }> = {};
 let memoryQueue: any[] = [];
 
@@ -356,6 +375,7 @@ export const DB = {
 
   setCachedAppSettings(settings: Record<string, any>) {
     memoryStore[APP_SETTINGS_KEY] = settings;
+    saveToLocalStorage();
   },
 
   getCachedAppSetting(name: string, fallback: any = null) {
@@ -383,7 +403,7 @@ export const DB = {
       }
       return data?.value ?? fallback;
     } catch (e) {
-      console.error(e);
+      console.error('Remote fetch error:', e);
       return fallback;
     }
   },
@@ -400,7 +420,7 @@ export const DB = {
       ], { onConflict: 'key' });
     } catch (error: any) {
       if (!isMissingTableError(error, APP_SETTINGS_TABLE)) {
-        console.error(error);
+        console.error('Remote save error:', error);
       }
       return { error };
     }
@@ -408,10 +428,12 @@ export const DB = {
 
   async getRoleConfig() {
     const local = this.getCachedAppSetting(APP_SETTING_NAMES.roles, {});
-    const remote = await this.getRemoteAppSetting(APP_SETTING_NAMES.roles, local);
-    const next = remote || {};
-    this.setCachedAppSetting(APP_SETTING_NAMES.roles, next);
-    return next;
+    const remote = await this.getRemoteAppSetting(APP_SETTING_NAMES.roles, null);
+    if (remote && Object.keys(remote).length > 0) {
+      this.setCachedAppSetting(APP_SETTING_NAMES.roles, remote);
+      return remote;
+    }
+    return local;
   },
 
   async saveRoleConfig(roles: any) {
@@ -421,9 +443,14 @@ export const DB = {
 
   async getGmailConfig() {
     const local = normalizeGmailConfig(this.getCachedAppSetting(APP_SETTING_NAMES.gmail, null));
-    const remote = normalizeGmailConfig(await this.getRemoteAppSetting(APP_SETTING_NAMES.gmail, local));
-    this.setCachedAppSetting(APP_SETTING_NAMES.gmail, remote);
-    return remote;
+    const remote = await this.getRemoteAppSetting(APP_SETTING_NAMES.gmail, null);
+    
+    if (remote && remote.isConnected) {
+      const normalizedRemote = normalizeGmailConfig(remote);
+      this.setCachedAppSetting(APP_SETTING_NAMES.gmail, normalizedRemote);
+      return normalizedRemote;
+    }
+    return local;
   },
 
   async saveGmailConfig(config: any) {
@@ -754,21 +781,25 @@ export const DB = {
   },
 
   getConnectionConfig() {
-    const envUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-    const envKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-    return {
-      url: envUrl,
-      key: envKey,
-      source: 'env',
-    };
+    return getConfig();
   },
 
-  saveConnectionConfig(_config: { url: string; key: string }) {
-    return {
-      error: {
-        message: 'Supabase 연결 정보는 브라우저 로컬이 아니라 서버 ENV에서만 관리됩니다.',
-      },
-    };
+  saveConnectionConfig(config: { url: string; key: string }) {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('supabase_url', config.url);
+      localStorage.setItem('supabase_key', config.key);
+      return { success: true };
+    }
+    return { error: { message: '브라우저 환경이 아닙니다.' } };
+  },
+
+  clearConnectionConfig() {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('supabase_url');
+      localStorage.removeItem('supabase_key');
+      return { success: true };
+    }
+    return { error: { message: '브라우저 환경이 아닙니다.' } };
   },
 
   isServerBacked() {
