@@ -10,7 +10,7 @@ import { useAdmin, ROLES } from '@/app/admin/layout';
 const Sidebar = () => {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, role, can } = useAdmin();
+  const { user, role, can, sidebarOpen, setSidebarOpen } = useAdmin();
   const [userName, setUserName] = useState('관리자');
   const [adminPageName, setAdminPageName] = useState('SONGDO ADMIN');
 
@@ -21,8 +21,9 @@ const Sidebar = () => {
   }, [user]);
 
   useEffect(() => {
-    const settings = DB.getSystemSettings();
-    setAdminPageName(settings.admin_page_name || 'SONGDO ADMIN');
+    DB.getSystemSettings().then((settings) => {
+      setAdminPageName(settings.admin_page_name || 'SONGDO ADMIN');
+    });
   }, []);
 
   const handleLogout = async () => {
@@ -65,13 +66,16 @@ const Sidebar = () => {
   const r = ROLES[role] || ROLES.operator;
 
   return (
-    <aside className="sidebar">
+    <aside className={`sidebar ${sidebarOpen ? 'on' : ''}`}>
       <div className="sb-brand">
         <div className="sb-gem">⛺</div>
         <div>
           <div className="sb-name">{adminPageName}</div>
           <div className="sb-tag">Supabase Edition</div>
         </div>
+        <button className="sb-close-mobile" onClick={() => setSidebarOpen(false)}>
+          <i className="fa-solid fa-xmark"></i>
+        </button>
       </div>
       <nav className="sb-nav">
         {navItems.map((group, idx) => (

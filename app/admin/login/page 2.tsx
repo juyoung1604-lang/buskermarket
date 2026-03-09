@@ -26,9 +26,8 @@ const LoginPage = () => {
         setRememberEmail(true);
       }
     }
-    DB.getSystemSettings().then((settings) => {
-      setAdminPageName(settings.admin_page_name || 'SONGDO ADMIN');
-    });
+    const settings = DB.getSystemSettings();
+    setAdminPageName(settings.admin_page_name || 'SONGDO ADMIN');
   }, []);
 
   const handleLogin = async (e?: React.FormEvent, overrideEmail?: string, overridePassword?: string) => {

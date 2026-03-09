@@ -38,6 +38,10 @@
   "exclude": [
     "node_modules",
     "backup",
+    "deploy_ready",
+    "**/deploy_ready/**",
+    "**/* 2.ts",
+    "**/* 2.tsx",
     "**/backup/**"
   ]
 }

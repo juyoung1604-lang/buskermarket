@@ -582,3 +582,68 @@ td {
   animation: spin .6s linear infinite; flex-shrink: 0; display: inline-block;
 }
 .spinner-lg { width: 24px; height: 24px; border-width: 3px; }
+
+/* ════ MOBILE RESPONSIVE ════ */
+@media (max-width: 1024px) {
+  :root {
+    --sb-w: 240px;
+    --admin-gutter: 16px;
+  }
+  .kpi-row { grid-template-columns: repeat(2, 1fr); }
+  .dashboard-main-grid { grid-template-columns: 1fr !important; }
+}
+
+@media (max-width: 768px) {
+  .admin-shell { overflow: visible; height: auto; min-height: 100vh; }
+  .sidebar {
+    position: fixed; top: 0; left: 0; bottom: 0;
+    transform: translateX(-100%);
+    transition: transform .3s cubic-bezier(.4,0,.2,1);
+    box-shadow: 20px 0 50px rgba(0,0,0,0.3);
+  }
+  .sidebar.on { transform: translateX(0); }
+  .sb-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(4px); z-index: 45;
+    animation: fadeIn .2s forwards;
+  }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+  .sb-close-mobile {
+    display: flex !important;
+    align-items: center; justify-content: center;
+    width: 32px; height: 32px; border-radius: 8px;
+    background: var(--ink3); border: 1px solid var(--line2);
+    color: var(--muted); cursor: pointer; margin-left: auto;
+  }
+
+  .admin-main { width: 100%; height: auto; overflow: visible; }
+  .topbar { padding: 0 16px; position: sticky; top: 0; z-index: 40; border-bottom: 1px solid var(--line); }
+  .hamburger { display: flex !important; align-items: center; justify-content: center; width: 38px; height: 38px; border-radius: 8px; background: var(--ink3); border: 1px solid var(--line2); color: var(--soft); cursor: pointer; }
+  
+  .tb-title-box { display: flex; flex-direction: column; }
+  .tb-page-name { font-size: 0.85rem; }
+  .tb-breadcrumb { display: none; }
+  .tb-time { display: none; }
+
+  .info-strip { padding: 6px 16px; }
+  .perm-banner-list { display: none; }
+  .supa-status-text { font-size: 0.6rem; }
+
+  .admin-content { padding: 16px; }
+  .kpi-row { grid-template-columns: 1fr; }
+  .kpi-v { font-size: 1.6rem; }
+
+  .tbl-toolbar { flex-direction: column; align-items: stretch; gap: 10px; }
+  .search-box { max-width: none; }
+  .tbl-actions { margin-left: 0; width: 100%; justify-content: flex-end; }
+  
+  .tbl-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  table { min-width: 600px; }
+
+  .cal-layout { grid-template-columns: 1fr; }
+  .modal { width: 96%; margin: 10px; }
+}
+
+/* Helper for Sidebar Close button hidden on desktop */
+.sb-close-mobile { display: none; }

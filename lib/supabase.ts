@@ -2,10 +2,12 @@ import { createClient } from '@supabase/supabase-js';
 
 // Configuration helper
 const getConfig = () => {
-  if (typeof window === 'undefined') return { url: '', key: '' };
+  const envUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+  const envKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+  if (typeof window === 'undefined') return { url: envUrl, key: envKey };
   return {
-    url: localStorage.getItem('supa_url') || process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-    key: localStorage.getItem('supa_anon_key') || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+    url: envUrl || localStorage.getItem('supa_url') || '',
+    key: envKey || localStorage.getItem('supa_anon_key') || ''
   };
 };
 
@@ -18,6 +20,15 @@ const CACHE_PREFIX = 'songdo_cache_';
 const OFFLINE_Q_KEY = 'songdo_offline_queue';
 const LOCAL_DATA_KEY = 'songdo_local_data';
 const SYSTEM_SETTINGS_KEY = 'songdo_system_settings';
+const APP_SETTINGS_KEY = 'songdo_app_settings';
+const APP_SETTINGS_TABLE = 'app_settings';
+const ROLE_SETTINGS_KEY = 'admin_dynamic_roles';
+
+const APP_SETTING_NAMES = {
+  system: 'system_settings',
+  gmail: 'gmail_config',
+  roles: 'admin_dynamic_roles',
+} as const;
 
 const DEFAULT_SETTINGS = {
   admin_page_name: 'SONGDO ADMIN',
@@ -25,6 +36,12 @@ const DEFAULT_SETTINGS = {
   seller_booth_fee: 30000,
   deposit_bank: '신한은행',
   deposit_account: '110-123-456789'
+};
+
+const DEFAULT_GMAIL_CONFIG = {
+  email: '',
+  appPassword: '',
+  isConnected: false,
 };
 
 const FIXED_ADMIN_PROFILES = [
@@ -321,7 +338,127 @@ const SAMPLE_RESET_TARGETS = [
   { table: 'newsletter_templates', lockId: 'news-temp-seed-lock', optional: true },
 ] as const;
 
+const normalizeSystemSettings = (settings: any = {}) => ({
+  ...DEFAULT_SETTINGS,
+  ...(settings || {}),
+});
+
+const normalizeGmailConfig = (config: any = {}) => ({
+  ...DEFAULT_GMAIL_CONFIG,
+  ...(config || {}),
+});
+
 export const DB = {
+  getCachedAppSettings() {
+    if (typeof window === 'undefined') return {};
+    try {
+      return JSON.parse(localStorage.getItem(APP_SETTINGS_KEY) || '{}');
+    } catch {
+      return {};
+    }
+  },
+
+  setCachedAppSettings(settings: Record<string, any>) {
+    if (typeof window === 'undefined') return;
+    try {
+      localStorage.setItem(APP_SETTINGS_KEY, JSON.stringify(settings));
+    } catch {
+      /* ignore */
+    }
+  },
+
+  getCachedAppSetting(name: string, fallback: any = null) {
+    const cached = this.getCachedAppSettings();
+    return cached[name] ?? fallback;
+  },
+
+  setCachedAppSetting(name: string, value: any) {
+    const cached = this.getCachedAppSettings();
+    cached[name] = value;
+    this.setCachedAppSettings(cached);
+  },
+
+  async getRemoteAppSetting(name: string, fallback: any = null) {
+    if (!this.isConfigured()) return fallback;
+    try {
+      const { data, error } = await supabase
+        .from(APP_SETTINGS_TABLE)
+        .select('value')
+        .eq('key', name)
+        .maybeSingle();
+      if (error) {
+        if (isMissingTableError(error, APP_SETTINGS_TABLE)) return fallback;
+        throw error;
+      }
+      return data?.value ?? fallback;
+    } catch (e) {
+      console.error(e);
+      return fallback;
+    }
+  },
+
+  async saveRemoteAppSetting(name: string, value: any) {
+    if (!this.isConfigured()) return { error: null };
+    try {
+      return await supabase.from(APP_SETTINGS_TABLE).upsert([
+        {
+          key: name,
+          value,
+          updated_at: new Date().toISOString(),
+        }
+      ], { onConflict: 'key' });
+    } catch (error: any) {
+      if (!isMissingTableError(error, APP_SETTINGS_TABLE)) {
+        console.error(error);
+      }
+      return { error };
+    }
+  },
+
+  async getRoleConfig() {
+    const legacyLocal = (() => {
+      if (typeof window === 'undefined') return {};
+      try {
+        return JSON.parse(localStorage.getItem(ROLE_SETTINGS_KEY) || '{}');
+      } catch {
+        return {};
+      }
+    })();
+    const local = this.getCachedAppSetting(APP_SETTING_NAMES.roles, legacyLocal);
+    const remote = await this.getRemoteAppSetting(APP_SETTING_NAMES.roles, local);
+    const next = remote || {};
+    this.setCachedAppSetting(APP_SETTING_NAMES.roles, next);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(ROLE_SETTINGS_KEY, JSON.stringify(next));
+    }
+    return next;
+  },
+
+  async saveRoleConfig(roles: any) {
+    this.setCachedAppSetting(APP_SETTING_NAMES.roles, roles);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(ROLE_SETTINGS_KEY, JSON.stringify(roles));
+    }
+    return await this.saveRemoteAppSetting(APP_SETTING_NAMES.roles, roles);
+  },
+
+  async getGmailConfig() {
+    const local = normalizeGmailConfig(this.getCachedAppSetting(APP_SETTING_NAMES.gmail, null));
+    const remote = normalizeGmailConfig(await this.getRemoteAppSetting(APP_SETTING_NAMES.gmail, local));
+    this.setCachedAppSetting(APP_SETTING_NAMES.gmail, remote);
+    return remote;
+  },
+
+  async saveGmailConfig(config: any) {
+    const normalized = normalizeGmailConfig(config);
+    this.setCachedAppSetting(APP_SETTING_NAMES.gmail, normalized);
+    return await this.saveRemoteAppSetting(APP_SETTING_NAMES.gmail, normalized);
+  },
+
+  async clearGmailConfig() {
+    return await this.saveGmailConfig(DEFAULT_GMAIL_CONFIG);
+  },
+
   // NEWSLETTER
   async getNewsletters() {
     const local = this.getLocalData('newsletter');
@@ -626,17 +763,57 @@ export const DB = {
     return { error: null };
   },
   // SYSTEM SETTINGS
-  getSystemSettings() {
-    if (typeof window === 'undefined') return DEFAULT_SETTINGS;
-    try {
-      const saved = localStorage.getItem(SYSTEM_SETTINGS_KEY);
-      return saved ? JSON.parse(saved) : DEFAULT_SETTINGS;
-    } catch { return DEFAULT_SETTINGS; }
+  async getSystemSettings() {
+    const legacyLocal = (() => {
+      if (typeof window === 'undefined') return DEFAULT_SETTINGS;
+      try {
+        const saved = localStorage.getItem(SYSTEM_SETTINGS_KEY);
+        return saved ? JSON.parse(saved) : DEFAULT_SETTINGS;
+      } catch {
+        return DEFAULT_SETTINGS;
+      }
+    })();
+    const local = normalizeSystemSettings(this.getCachedAppSetting(APP_SETTING_NAMES.system, legacyLocal));
+    const remote = normalizeSystemSettings(await this.getRemoteAppSetting(APP_SETTING_NAMES.system, local));
+    this.setCachedAppSetting(APP_SETTING_NAMES.system, remote);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(SYSTEM_SETTINGS_KEY, JSON.stringify(remote));
+    }
+    return remote;
   },
-  saveSystemSettings(settings: any) {
-    if (typeof window === 'undefined') return;
-    localStorage.setItem(SYSTEM_SETTINGS_KEY, JSON.stringify(settings));
+  async saveSystemSettings(settings: any) {
+    const normalized = normalizeSystemSettings(settings);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(SYSTEM_SETTINGS_KEY, JSON.stringify(normalized));
+    }
+    this.setCachedAppSetting(APP_SETTING_NAMES.system, normalized);
     this.cacheClear();
+    return await this.saveRemoteAppSetting(APP_SETTING_NAMES.system, normalized);
+  },
+
+  getConnectionConfig() {
+    const envUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+    const envKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+    return {
+      url: envUrl || (typeof window !== 'undefined' ? localStorage.getItem('supa_url') || '' : ''),
+      key: envKey || (typeof window !== 'undefined' ? localStorage.getItem('supa_anon_key') || '' : ''),
+      source: envUrl && envKey ? 'env' : 'browser',
+    };
+  },
+
+  saveConnectionConfig(config: { url: string; key: string }) {
+    const current = this.getConnectionConfig();
+    if (current.source === 'env') {
+      return {
+        error: {
+          message: '배포 환경에서는 Supabase 연결 정보가 서버 ENV에 고정됩니다. ENV 값을 변경해야 반영됩니다.',
+        },
+      };
+    }
+    if (typeof window === 'undefined') return { error: { message: '브라우저 환경에서만 저장할 수 있습니다.' } };
+    localStorage.setItem('supa_url', config.url);
+    localStorage.setItem('supa_anon_key', config.key);
+    return { error: null };
   },
 
   // INTERNAL HELPERS

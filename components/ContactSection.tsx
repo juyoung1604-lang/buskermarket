@@ -35,8 +35,7 @@ export default function ContactSection() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const s = DB.getSystemSettings();
-    setSettings(s);
+    DB.getSystemSettings().then(setSettings);
   }, []);
 
   useEffect(() => {

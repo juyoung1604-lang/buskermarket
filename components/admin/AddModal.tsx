@@ -33,8 +33,7 @@ const AddModal = ({ type, isOpen, onClose, onSuccess, initialData, mode = 'defau
 
   useEffect(() => {
     if (isOpen) {
-      const s = DB.getSystemSettings();
-      setSettings(s);
+      DB.getSystemSettings().then(setSettings);
 
       if (initialData) {
         const parsed = parseNote(initialData.note || '');

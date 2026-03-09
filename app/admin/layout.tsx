@@ -42,12 +42,16 @@ const AdminContext = createContext<{
   can: (perm: string) => boolean;
   dynamicRoles: any;
   updateRolePerms: (roleKey: string, permKey: string, value: boolean) => void;
+  sidebarOpen: boolean;
+  setSidebarOpen: (open: boolean) => void;
 }>({
   user: null,
   role: 'operator',
   can: () => false,
   dynamicRoles: ROLES,
   updateRolePerms: () => {},
+  sidebarOpen: false,
+  setSidebarOpen: () => {},
 });
 
 export const useAdmin = () => useContext(AdminContext);
@@ -86,7 +90,7 @@ const PermissionBanner = ({ role, roles }: { role: string, roles: any }) => {
         </div>
         <span id="perm-banner-text">
           <b style={{ color: r.color }}>{r.label}</b>로 접속 중 |
-          <span style={{ color: r.color, marginLeft: '5px' }}>✓ {Object.entries(r.perms).filter(([_, v]) => v).map(([k]) => PERM_LABELS[k]).join(' · ')}</span>
+          <span className="perm-banner-list" style={{ color: r.color, marginLeft: '5px' }}>✓ {Object.entries(r.perms).filter(([_, v]) => v).map(([k]) => PERM_LABELS[k]).join(' · ')}</span>
         </span>
       </div>
     </div>
@@ -120,7 +124,7 @@ const SupabaseStatusBar = () => {
           <i className="fa-solid fa-database" style={{ color: '#3ECF8E' }}></i> Supabase
         </div>
         <div className={`dot-pulse ${online ? 'dot-jade' : 'dot-gold'}`} style={{ width: '7px', height: '7px', borderRadius: '50%', background: online ? 'var(--jade)' : 'var(--gold)', boxShadow: online ? '0 0 6px var(--jade)' : '0 0 6px var(--gold)' }}></div>
-        <span className="supa-status-text" style={{ color: 'var(--soft)', fontFamily: 'var(--font-mono)' }}>{online ? '연결됨' : '미연결 (오프라인)'}</span>
+        <span className="supa-status-text" style={{ color: 'var(--soft)', fontFamily: 'var(--font-mono)' }}>{online ? '연결됨' : '미연결'}</span>
         {queueCount > 0 && <span style={{ color: 'var(--gold)', fontFamily: 'var(--font-mono)' }}>(미동기화 {queueCount}건)</span>}
       </div>
     </div>
@@ -137,17 +141,21 @@ export default function AdminLayout({
   const [role, setRole] = useState('operator');
   const [permOverrides, setPermOverrides] = useState<Record<string, boolean>>({});
   const [dynamicRoles, setDynamicRoles] = useState<any>(ROLES);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
 
   useEffect(() => {
-    // Load dynamic roles from local storage
-    const savedRoles = localStorage.getItem('admin_dynamic_roles');
-    if (savedRoles) {
-      const mergedRoles = mergeRoleConfig(JSON.parse(savedRoles));
+    // Close sidebar on route change for mobile
+    setSidebarOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    DB.getRoleConfig().then((savedRoles) => {
+      const mergedRoles = mergeRoleConfig(savedRoles);
       setDynamicRoles(mergedRoles);
       localStorage.setItem('admin_dynamic_roles', JSON.stringify(mergedRoles));
-    }
+    });
   }, []);
 
   const updateRolePerms = (roleKey: string, permKey: string, value: boolean) => {
@@ -163,6 +171,7 @@ export default function AdminLayout({
     };
     setDynamicRoles(updated);
     localStorage.setItem('admin_dynamic_roles', JSON.stringify(updated));
+    DB.saveRoleConfig(updated);
   };
 
   const can = (perm: string) => {
@@ -279,13 +288,14 @@ export default function AdminLayout({
   }
 
   return (
-    <AdminContext.Provider value={{ user, role, can, dynamicRoles, updateRolePerms }}>
+    <AdminContext.Provider value={{ user, role, can, dynamicRoles, updateRolePerms, sidebarOpen, setSidebarOpen }}>
       <ToastProvider>
-        <div className="admin-shell">
+        <div className={`admin-shell ${sidebarOpen ? 'sb-open' : ''}`}>
           <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
           <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=DM+Mono:ital,wght@0,400;0,500;1,400&family=Syne:wght@700;800&display=swap" rel="stylesheet" />
           
           <Sidebar />
+          {sidebarOpen && <div className="sb-overlay" onClick={() => setSidebarOpen(false)}></div>}
           <div className="admin-main">
             <SupabaseStatusBar />
             <PermissionBanner role={role} roles={dynamicRoles} />

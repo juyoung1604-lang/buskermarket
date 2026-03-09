@@ -13,24 +13,18 @@ const SupabasePage = () => {
     url: '',
     key: ''
   });
-  const [configSource, setConfigSource] = useState<'env' | 'browser'>('browser');
 
   useEffect(() => {
     setQueue(DB.getQueue());
-    const current = DB.getConnectionConfig();
-    setConfigSource(current.source as 'env' | 'browser');
     setConfig({
-      url: current.url,
-      key: current.key,
+      url: localStorage.getItem('supa_url') || process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+      key: localStorage.getItem('supa_anon_key') || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
     });
   }, []);
 
   const handleSaveConfig = () => {
-    const { error } = DB.saveConnectionConfig(config);
-    if (error) {
-      toast(error.message, 'rose');
-      return;
-    }
+    localStorage.setItem('supa_url', config.url);
+    localStorage.setItem('supa_anon_key', config.key);
     toast('설정이 저장되었습니다. 페이지를 새로고침하여 반영하세요.', 'jade');
     setTimeout(() => window.location.reload(), 1500);
   };
@@ -120,18 +114,9 @@ create table if not exists admin_profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   name text not null,
   email text not null unique,
-  role text not null default 'operator' check (role in ('master_admin', 'super_admin', 'admin', 'operator')),
+  role text not null default 'operator' check (role in ('super_admin', 'admin', 'operator')),
   status text not null default 'active' check (status in ('active', 'inactive', 'suspended')),
   last_login timestamptz,
-  perm_overrides jsonb not null default '{}'::jsonb,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
-);
-
--- 0-1. 전역 앱 설정
-create table if not exists app_settings (
-  key text primary key,
-  value jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -317,7 +302,6 @@ alter table events enable row level security;
 alter table homepage_popups enable row level security;
 alter table revenue enable row level security;
 alter table images enable row level security;
-alter table app_settings enable row level security;
 
 -- 개발/운영 간단 정책
 do $$
@@ -352,9 +336,6 @@ begin
   if not exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'admin_profiles' and policyname = 'admin_profiles_public_all') then
     create policy admin_profiles_public_all on admin_profiles for all using (true) with check (true);
   end if;
-  if not exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'app_settings' and policyname = 'app_settings_public_all') then
-    create policy app_settings_public_all on app_settings for all using (true) with check (true);
-  end if;
 end
 $$;
 `;
@@ -374,7 +355,6 @@ $$;
                     type="text" 
                     value={config.url} 
                     onChange={(e) => setConfig({ ...config, url: e.target.value })}
-                    disabled={configSource === 'env'}
                     style={{ width: '100%', padding: '9px 12px', background: 'var(--ink3)', border: '1px solid var(--line2)', borderRadius: '6px', color: 'var(--head)' }} 
                   />
                 </div>
@@ -385,17 +365,11 @@ $$;
                     type="password" 
                     value={config.key} 
                     onChange={(e) => setConfig({ ...config, key: e.target.value })}
-                    disabled={configSource === 'env'}
                     style={{ width: '100%', padding: '9px 12px', background: 'var(--ink3)', border: '1px solid var(--line2)', borderRadius: '6px', color: 'var(--head)' }} 
                   />
                 </div>
-                <div style={{ fontSize: '.72rem', color: 'var(--muted)', lineHeight: 1.6 }}>
-                  {configSource === 'env'
-                    ? '현재 배포 환경은 서버 ENV 기반으로 연결됩니다. 이 값은 브라우저에서 바꿔도 적용되지 않습니다.'
-                    : '로컬 브라우저 설정을 사용 중입니다. 개발 환경에서만 변경 저장이 가능합니다.'}
-                </div>
                 <div style={{ display: 'flex', gap: '8px' }}>
-                  <button className="btn btn-jade" style={{ flex: 1, justifyContent: 'center' }} onClick={handleSaveConfig} disabled={configSource === 'env'}>
+                  <button className="btn btn-jade" style={{ flex: 1, justifyContent: 'center' }} onClick={handleSaveConfig}>
                     <i className="fa-solid fa-save"></i> 저장 및 재연결
                   </button>
                   <button className="btn" style={{ flex: 1, justifyContent: 'center' }} onClick={handleTestConnection}>

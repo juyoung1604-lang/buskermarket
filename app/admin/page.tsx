@@ -209,7 +209,7 @@ const Dashboard = () => {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.6fr) minmax(280px, .9fr) minmax(280px, .95fr)', gap: '14px' }}>
+      <div className="dashboard-main-grid" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.6fr) minmax(280px, .9fr) minmax(280px, .95fr)', gap: '14px' }}>
         <div className="card">
           <div className="card-h">
             <span className="card-title">주간 신청 추이</span>

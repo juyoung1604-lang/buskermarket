@@ -38,7 +38,10 @@ const NewsletterPage = () => {
   useEffect(() => {
     fetchEmails();
     fetchTemplates();
-    DB.getGmailConfig().then(setGmailConfig);
+    const savedConfig = localStorage.getItem('songdo_gmail_config');
+    if (savedConfig) {
+      setGmailConfig(JSON.parse(savedConfig));
+    }
   }, []);
 
   const fetchEmails = async () => {
@@ -80,7 +83,7 @@ const NewsletterPage = () => {
     setTemplates(data || []);
   };
 
-  const handleGmailConnect = async (e: React.FormEvent) => {
+  const handleGmailConnect = (e: React.FormEvent) => {
     e.preventDefault();
     if (!canManageGmail) {
       toast('Gmail 연동 설정은 마스터관리자만 변경할 수 있습니다.', 'rose');
@@ -92,27 +95,19 @@ const NewsletterPage = () => {
     }
     
     const newConfig = { ...gmailConfig, isConnected: true };
-    const { error } = await DB.saveGmailConfig(newConfig);
-    if (error) {
-      toast('Gmail 설정 저장 실패: ' + error.message, 'rose');
-      return;
-    }
     setGmailConfig(newConfig);
+    localStorage.setItem('songdo_gmail_config', JSON.stringify(newConfig));
     toast('Gmail 계정이 연동되었습니다.', 'jade');
   };
 
-  const handleGmailDisconnect = async () => {
+  const handleGmailDisconnect = () => {
     if (!canManageGmail) {
       toast('Gmail 연동 설정은 마스터관리자만 변경할 수 있습니다.', 'rose');
       return;
     }
     const newConfig = { email: '', appPassword: '', isConnected: false };
-    const { error } = await DB.clearGmailConfig();
-    if (error) {
-      toast('Gmail 설정 해제 실패: ' + error.message, 'rose');
-      return;
-    }
     setGmailConfig(newConfig);
+    localStorage.removeItem('songdo_gmail_config');
     toast('연동이 해제되었습니다.', 'sky');
   };
 
@@ -196,6 +191,8 @@ const NewsletterPage = () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          gmailUser: gmailConfig.email,
+          gmailPass: gmailConfig.appPassword,
           recipients: recipients,
           subject: compose.subject,
           content: compose.content

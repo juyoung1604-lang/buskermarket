@@ -3,15 +3,17 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack",
+    "dev": "next dev --turbopack --hostname 127.0.0.1 --port 3005",
     "build": "next build",
     "start": "next start",
     "lint": "tsc --noEmit",
+    "postinstall": "node scripts/fix-motion-dom.mjs",
     "git:auto": "bash scripts/auto-git-sync.sh"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.98.0",
-    "framer-motion": "^11.0.0",
+    "enhanced-resolve": "^5.20.0",
+    "framer-motion": "^11.18.2",
     "next": "^16.1.6",
     "nodemailer": "^8.0.1",
     "react": "^19.0.0",

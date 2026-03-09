@@ -1,10 +1,18 @@
 // app/api/send-email/route.ts
 import { NextResponse } from 'next/server';
 import nodemailer from 'nodemailer';
+import { getServerAppSetting } from '@/lib/server-supabase';
 
 export async function POST(request: Request) {
   try {
-    const { gmailUser, gmailPass, recipients, subject, content } = await request.json();
+    const { recipients, subject, content } = await request.json();
+    const gmailConfig = await getServerAppSetting('gmail_config', {
+      email: '',
+      appPassword: '',
+      isConnected: false,
+    });
+    const gmailUser = gmailConfig?.email || '';
+    const gmailPass = gmailConfig?.appPassword || '';
 
     if (!gmailUser || !gmailPass || !recipients || !subject || !content) {
       return NextResponse.json({ error: '필수 정보가 누락되었습니다.' }, { status: 400 });

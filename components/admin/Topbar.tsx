@@ -4,10 +4,12 @@
 import React, { useEffect, useState } from 'react';
 import { DB } from '@/lib/supabase';
 import { usePathname } from 'next/navigation';
+import { useAdmin } from '@/app/admin/layout';
 
 const Topbar = () => {
   const [time, setTime] = useState('');
   const pathname = usePathname();
+  const { setSidebarOpen } = useAdmin();
 
   useEffect(() => {
     const updateTime = () => {
@@ -60,10 +62,10 @@ const Topbar = () => {
   return (
     <header className="topbar">
       <div className="tb-left">
-        <button className="hamburger" style={{ display: 'none' }}>
+        <button className="hamburger" onClick={() => setSidebarOpen(true)}>
           <i className="fa-solid fa-bars"></i>
         </button>
-        <div>
+        <div className="tb-title-box">
           <div className="tb-page-name">{title}</div>
           <div className="tb-breadcrumb">{bc}</div>
         </div>

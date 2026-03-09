@@ -46,10 +46,18 @@ export default function SettingsManager({ mode = 'all' }: { mode?: SettingsViewM
   const [images, setImages] = useState<any[]>([]);
 
   useEffect(() => {
-    const s = DB.getSystemSettings();
-    setSysSettings(s);
+    DB.getSystemSettings().then(setSysSettings);
     loadImages();
   }, []);
+
+  const persistSystemSettings = async () => {
+    const { error } = await DB.saveSystemSettings(sysSettings);
+    if (error) {
+      toast('설정 저장 실패: ' + error.message, 'rose');
+      return;
+    }
+    toast('저장되었습니다.', 'jade');
+  };
 
   const loadImages = async () => {
     const data = await DB.getImages();
@@ -354,21 +362,21 @@ export default function SettingsManager({ mode = 'all' }: { mode?: SettingsViewM
                       placeholder="예: SONGDO ADMIN"
                     />
                   </div>
-                  <button className="btn btn-jade" onClick={() => { DB.saveSystemSettings(sysSettings); toast('저장되었습니다.', 'jade'); }}><i className="fa-solid fa-save"></i> 저장</button>
+                  <button className="btn btn-jade" onClick={persistSystemSettings}><i className="fa-solid fa-save"></i> 저장</button>
                 </div>
                 <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end', borderTop: '1px solid var(--line)', paddingTop: 16 }}>
                   <div style={{ flex: 1 }}>
                     <label style={{ display: 'block', fontSize: '.62rem', fontWeight: 700, color: 'var(--muted)', marginBottom: '5px' }}>버스킹 보증금 (원)</label>
                     <input className="fi" type="number" value={sysSettings.busker_deposit} onChange={(e) => setSysSettings({ ...sysSettings, busker_deposit: parseInt(e.target.value) || 0 })} />
                   </div>
-                  <button className="btn btn-jade" onClick={() => { DB.saveSystemSettings(sysSettings); toast('저장되었습니다.', 'jade'); }}><i className="fa-solid fa-save"></i> 저장</button>
+                  <button className="btn btn-jade" onClick={persistSystemSettings}><i className="fa-solid fa-save"></i> 저장</button>
                 </div>
                 <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end', borderTop: '1px solid var(--line)', paddingTop: 16 }}>
                   <div style={{ flex: 1 }}>
                     <label style={{ display: 'block', fontSize: '.62rem', fontWeight: 700, color: 'var(--muted)', marginBottom: '5px' }}>기본 셀러 부스비 (원)</label>
                     <input className="fi" type="number" value={sysSettings.seller_booth_fee} onChange={(e) => setSysSettings({ ...sysSettings, seller_booth_fee: parseInt(e.target.value) || 0 })} />
                   </div>
-                  <button className="btn btn-jade" onClick={() => { DB.saveSystemSettings(sysSettings); toast('저장되었습니다.', 'jade'); }}><i className="fa-solid fa-save"></i> 저장</button>
+                  <button className="btn btn-jade" onClick={persistSystemSettings}><i className="fa-solid fa-save"></i> 저장</button>
                 </div>
                 <div style={{ borderTop: '1px solid var(--line)', paddingTop: 16 }}>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr', gap: 12, marginBottom: 12 }}>
@@ -381,7 +389,7 @@ export default function SettingsManager({ mode = 'all' }: { mode?: SettingsViewM
                       <input className="fi" type="text" value={sysSettings.deposit_account || ''} onChange={(e) => setSysSettings({ ...sysSettings, deposit_account: e.target.value })} placeholder="110-..." />
                     </div>
                   </div>
-                  <button className="btn btn-jade" style={{ width: '100%' }} onClick={() => { DB.saveSystemSettings(sysSettings); toast('저장되었습니다.', 'jade'); }}><i className="fa-solid fa-save"></i> 계좌 정보 저장</button>
+                  <button className="btn btn-jade" style={{ width: '100%' }} onClick={persistSystemSettings}><i className="fa-solid fa-save"></i> 계좌 정보 저장</button>
                 </div>
               </div>
             </div>

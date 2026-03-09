@@ -43,7 +43,7 @@ export default function StatusPageClient({ initialType }: { initialType: ApplyTy
   );
 
   useEffect(() => {
-    setSettings(DB.getSystemSettings());
+    DB.getSystemSettings().then(setSettings);
   }, []);
 
   const handleTypeChange = (nextType: ApplyType) => {
