@@ -5,6 +5,22 @@ import AnimateOnScroll from "./AnimateOnScroll";
 import { GALLERY_ITEMS } from "@/lib/constants";
 import { DB } from "@/lib/supabase";
 
+const ALLOWED_COL_SPANS = new Set([
+  "col-span-1",
+  "col-span-1 md:col-span-2",
+  "col-span-1 md:col-span-3",
+]);
+
+const ALLOWED_ROW_SPANS = new Set([
+  "row-span-1",
+  "md:row-span-2",
+]);
+
+const normalizeMinHeight = (value: unknown, fallback: string) => {
+  const normalized = String(value || "").trim();
+  return /^\d+px$/.test(normalized) ? normalized : fallback;
+};
+
 export default function GallerySection() {
   const [galleryItems, setGalleryItems] = useState<any[]>(GALLERY_ITEMS);
   const [mounted, setMounted] = useState(false);
@@ -18,10 +34,10 @@ export default function GallerySection() {
         return {
           ...item,
           url: found?.url || item.url,
-          caption: found?.caption || item.caption,
-          colSpan: found?.colSpan || item.colSpan,
-          rowSpan: found?.rowSpan || item.rowSpan,
-          minHeight: found?.minHeight || item.minHeight,
+          caption: found?.caption ?? item.caption,
+          colSpan: ALLOWED_COL_SPANS.has(found?.colSpan) ? found.colSpan : item.colSpan,
+          rowSpan: ALLOWED_ROW_SPANS.has(found?.rowSpan) ? found.rowSpan : item.rowSpan,
+          minHeight: normalizeMinHeight(found?.minHeight, item.minHeight),
         };
       });
       setGalleryItems(updated);

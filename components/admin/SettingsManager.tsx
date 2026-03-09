@@ -37,6 +37,7 @@ const ImageSettingItem = ({ item, images, onUpdate, onUpdateLayout, onReset }: a
   const defaultCaption = isGallery ? item.defaultCaption : undefined;
   const defaultLayout = isGallery ? item.defaultLayout : undefined;
   const inputRef = useRef<HTMLInputElement>(null);
+  const captionRef = useRef<HTMLInputElement>(null);
 
   return (
     <div key={item.id} style={{ borderTop: '1px solid var(--line)', paddingTop: '14px' }}>
@@ -53,43 +54,55 @@ const ImageSettingItem = ({ item, images, onUpdate, onUpdateLayout, onReset }: a
             defaultValue={current?.url || ''}
           />
           {isGallery && (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px', marginTop: '4px' }}>
+            <>
               <div className="fg">
-                <label style={{ fontSize: '10px' }}>너비 (칸)</label>
-                <select
-                  className="fs"
-                  style={{ padding: '4px 8px', fontSize: '11px' }}
-                  value={current?.colSpan || item.defaultLayout?.colSpan}
-                  onChange={(e) => onUpdateLayout(item.id, { colSpan: e.target.value }, item.section, item.label)}
-                >
-                  <option value="col-span-1">1칸</option>
-                  <option value="col-span-1 md:col-span-2">2칸 (권장)</option>
-                  <option value="col-span-1 md:col-span-3">3칸 (전체)</option>
-                </select>
-              </div>
-              <div className="fg">
-                <label style={{ fontSize: '10px' }}>높이 (줄)</label>
-                <select
-                  className="fs"
-                  style={{ padding: '4px 8px', fontSize: '11px' }}
-                  value={current?.rowSpan || item.defaultLayout?.rowSpan}
-                  onChange={(e) => onUpdateLayout(item.id, { rowSpan: e.target.value }, item.section, item.label)}
-                >
-                  <option value="row-span-1">1줄</option>
-                  <option value="md:row-span-2">2줄 (세로형)</option>
-                </select>
-              </div>
-              <div className="fg">
-                <label style={{ fontSize: '10px' }}>최소 높이</label>
+                <label style={{ fontSize: '10px' }}>오버레이 텍스트</label>
                 <input
+                  ref={captionRef}
                   className="fi"
-                  style={{ padding: '4px 8px', fontSize: '11px' }}
-                  placeholder="220px"
-                  defaultValue={current?.minHeight || item.defaultLayout?.minHeight}
-                  onBlur={(e) => onUpdateLayout(item.id, { minHeight: e.target.value }, item.section, item.label)}
+                  style={{ padding: '6px 10px', fontSize: '12px' }}
+                  placeholder="이미지 위에 노출할 문구"
+                  defaultValue={current?.caption ?? item.defaultCaption ?? ''}
                 />
               </div>
-            </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px', marginTop: '4px' }}>
+                <div className="fg">
+                  <label style={{ fontSize: '10px' }}>너비 (칸)</label>
+                  <select
+                    className="fs"
+                    style={{ padding: '4px 8px', fontSize: '11px' }}
+                    value={current?.colSpan || item.defaultLayout?.colSpan}
+                    onChange={(e) => onUpdateLayout(item.id, { colSpan: e.target.value }, item.section, item.label)}
+                  >
+                    <option value="col-span-1">1칸</option>
+                    <option value="col-span-1 md:col-span-2">2칸 (권장)</option>
+                    <option value="col-span-1 md:col-span-3">3칸 (전체)</option>
+                  </select>
+                </div>
+                <div className="fg">
+                  <label style={{ fontSize: '10px' }}>높이 (줄)</label>
+                  <select
+                    className="fs"
+                    style={{ padding: '4px 8px', fontSize: '11px' }}
+                    value={current?.rowSpan || item.defaultLayout?.rowSpan}
+                    onChange={(e) => onUpdateLayout(item.id, { rowSpan: e.target.value }, item.section, item.label)}
+                  >
+                    <option value="row-span-1">1줄</option>
+                    <option value="md:row-span-2">2줄 (세로형)</option>
+                  </select>
+                </div>
+                <div className="fg">
+                  <label style={{ fontSize: '10px' }}>최소 높이</label>
+                  <input
+                    className="fi"
+                    style={{ padding: '4px 8px', fontSize: '11px' }}
+                    placeholder="220px"
+                    defaultValue={current?.minHeight || item.defaultLayout?.minHeight}
+                    onBlur={(e) => onUpdateLayout(item.id, { minHeight: e.target.value }, item.section, item.label)}
+                  />
+                </div>
+              </div>
+            </>
           )}
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
@@ -98,7 +111,7 @@ const ImageSettingItem = ({ item, images, onUpdate, onUpdateLayout, onReset }: a
             onClick={() => {
               const val = inputRef.current?.value;
               if (val !== undefined) {
-                onUpdate(item.id, val, item.section, item.label);
+                onUpdate(item.id, val, item.section, item.label, captionRef.current?.value ?? current?.caption ?? defaultCaption);
               }
             }} 
             title="수정사항 저장" 
@@ -157,9 +170,19 @@ export default function SettingsManager({ mode = 'all' }: { mode?: SettingsViewM
     setImages(data || []);
   };
 
-  const handleUpdateImage = async (id: string, url: string, section: string, alt: string) => {
-    const current = images.find((img) => img.id === id) || {};
-    const { error } = await DB.updateImage(id, { ...current, url, section, alt, active: true });
+  const handleUpdateImage = async (id: string, url: string, section: string, alt: string, caption?: string) => {
+    const existing = images.find((img) => img.id === id);
+    const payload = {
+      ...(existing || {}),
+      id,
+      url,
+      section,
+      alt,
+      active: true,
+      ...(caption !== undefined ? { caption } : {}),
+    };
+
+    const { error } = await DB.updateImage(id, payload);
     if (!error) {
       toast('이미지가 업데이트되었습니다.', 'jade');
       loadImages();
@@ -170,7 +193,15 @@ export default function SettingsManager({ mode = 'all' }: { mode?: SettingsViewM
 
   const handleUpdateLayout = async (id: string, layout: any, section: string, alt: string) => {
     const current = images.find((img) => img.id === id) || {};
-    const { error } = await DB.updateImage(id, { ...current, ...layout, section, alt });
+    const payload = {
+      ...current,
+      ...layout,
+      id,
+      section,
+      alt,
+      active: true,
+    };
+    const { error } = await DB.updateImage(id, payload);
     if (!error) {
       toast('레이아웃이 업데이트되었습니다.', 'jade');
       loadImages();
