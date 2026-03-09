@@ -174,7 +174,7 @@ const AccountsPage = () => {
 
   return (
     <div className="space-y-6">
-      <div className="acc-level-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '14px' }}>
+      <div className="acc-level-grid">
         {Object.entries(dynamicRoles)
           .filter(([key]) => visibleRoleKeys.includes(key))
           .map(([key, r]: [string, any]) => (
@@ -207,8 +207,8 @@ const AccountsPage = () => {
         ))}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: '14px' }}>
-        <div>
+      <div className="accounts-main-grid">
+        <div className="acc-left">
           <div className="tbl-toolbar">
             <div className="search-box">
               <i className="fa-solid fa-magnifying-glass"></i>
@@ -341,7 +341,7 @@ const AccountsPage = () => {
           </div>
         </div>
 
-        <div className="space-y-4">
+        <div className="acc-right space-y-4">
           {editableRoleKeys.length > 0 && (
             <div className="card">
               <div className="card-h">

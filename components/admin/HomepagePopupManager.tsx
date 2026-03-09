@@ -174,15 +174,8 @@ const HomepagePopupManager = () => {
       </div>
 
       <div className="card-body space-y-4">
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'minmax(0, 1.15fr) minmax(0, 1fr)',
-            gap: '16px',
-            alignItems: 'start',
-          }}
-        >
-          <div style={{ padding: '14px', borderRadius: '12px', border: '1px solid var(--line)', background: 'var(--bg)' }}>
+        <div className="popup-mgr-grid">
+          <div className="pm-form" style={{ padding: '14px', borderRadius: '12px', border: '1px solid var(--line)', background: 'var(--bg)' }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '12px' }}>
               <div style={{ gridColumn: '1 / -1' }}>
                 <label style={{ display: 'block', fontSize: '.72rem', fontWeight: 700, color: 'var(--muted)', marginBottom: '6px' }}>팝업 제목</label>
@@ -274,7 +267,7 @@ const HomepagePopupManager = () => {
             </div>
           </div>
 
-          <div style={{ padding: '14px', borderRadius: '12px', border: '1px solid var(--line)', background: 'var(--bg)' }}>
+          <div className="pm-list" style={{ padding: '14px', borderRadius: '12px', border: '1px solid var(--line)', background: 'var(--bg)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
               <strong style={{ fontSize: '.88rem', color: 'var(--head)' }}>등록된 팝업</strong>
               <span className="badge b-approved">{popups.length}건</span>

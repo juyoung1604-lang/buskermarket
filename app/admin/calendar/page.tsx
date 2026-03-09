@@ -264,10 +264,10 @@ const CalendarPage = () => {
 
   return (
     <div className="space-y-6">
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: '20px', alignItems: 'start' }}>
+      <div className="cal-layout">
 
         {/* ─── Left: Calendar + detail ─── */}
-        <div className="space-y-5">
+        <div className="cal-left space-y-5">
           <div className="card">
             <div className="card-h">
               <div className="cal-month" style={{ fontSize: '1.1rem', fontWeight: 700 }}>
@@ -502,7 +502,7 @@ const CalendarPage = () => {
         </div>
 
         {/* ─── Right: Upcoming ─── */}
-        <div className="space-y-4">
+        <div className="cal-right space-y-4">
           <div className="card">
             <div className="card-h">
               <span className="card-title">

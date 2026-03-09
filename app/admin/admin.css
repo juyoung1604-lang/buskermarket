@@ -631,8 +631,8 @@ td {
   .supa-status-text { font-size: 0.6rem; }
 
   .admin-content { padding: 16px; }
-  .kpi-row { grid-template-columns: 1fr; }
-  .kpi-v { font-size: 1.6rem; }
+  .kpi-row { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .kpi-v { font-size: 1.2rem; }
 
   .tbl-toolbar { flex-direction: column; align-items: stretch; gap: 10px; }
   .search-box { max-width: none; }
@@ -642,8 +642,35 @@ td {
   table { min-width: 600px; }
 
   .cal-layout { grid-template-columns: 1fr; }
+  .cal-left { order: 2; }
+  .cal-right { order: 1; }
+  .cal-grid { min-height: 380px !important; }
+
+  .revenue-grid { grid-template-columns: 1fr; }
+  .popup-mgr-grid { grid-template-columns: 1fr; }
+  .pm-form { order: 1; }
+  .pm-list { order: 2; }
+
+  .newsletter-grid { grid-template-columns: 1fr; }
+  .nl-left { order: 1; }
+  .nl-right { order: 2; }
+
+  .supa-grid { grid-template-columns: 1fr; }
+
+  .acc-level-grid { grid-template-columns: 1fr !important; }
+  .accounts-main-grid { grid-template-columns: 1fr; }
+
   .modal { width: 96%; margin: 10px; }
 }
 
 /* Helper for Sidebar Close button hidden on desktop */
 .sb-close-mobile { display: none; }
+
+.revenue-grid { display: grid; grid-template-columns: 1.6fr 1fr; gap: 14px; }
+.popup-mgr-grid { display: grid; grid-template-columns: 1.15fr 1fr; gap: 16px; align-items: start; }
+.pm-form { order: 1; }
+.pm-list { order: 2; }
+.newsletter-grid { display: grid; grid-template-columns: 1.2fr 2fr; gap: 24px; alignItems: start; }
+.acc-level-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+.accounts-main-grid { display: grid; grid-template-columns: 1fr 320px; gap: 14px; }
+.supa-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }

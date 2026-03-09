@@ -227,10 +227,10 @@ const NewsletterPage = () => {
 
   return (
     <div className="space-y-6">
-      <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 2fr', gap: '24px', alignItems: 'start' }}>
+      <div className="newsletter-grid">
         
         {/* Left Column: List & Gmail Config */}
-        <div className="space-y-6">
+        <div className="nl-left space-y-6">
           {/* Gmail Config Card */}
           <div className="card">
             <div className="card-h">
@@ -415,7 +415,7 @@ const NewsletterPage = () => {
         </div>
 
         {/* Right Column: Compose Email */}
-        <div className="card" style={{ height: 'fit-content' }}>
+        <div className="nl-right card" style={{ height: 'fit-content' }}>
           <div className="card-h">
             <span className="card-title">뉴스레터 작성 및 발송</span>
             <div className="flex gap-2">

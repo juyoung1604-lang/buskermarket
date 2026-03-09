@@ -361,8 +361,8 @@ $$;
 
   return (
     <div className="space-y-6">
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
-        <div className="space-y-4">
+      <div className="supa-grid">
+        <div className="supa-left space-y-4">
           <div className="card">
             <div className="card-h"><span className="card-title">연결 정보</span></div>
             <div className="card-body">
@@ -440,7 +440,7 @@ $$;
           </div>
         </div>
 
-        <div className="card">
+        <div className="supa-right card">
           <div className="card-h"><span className="card-title">SQL 스키마 (Supabase Editor에 붙여넣기)</span></div>
           <div className="card-body" style={{ padding: '0', height: 'calc(100% - 46px)', overflow: 'hidden' }}>
             <div className="code-block" style={{ height: '100%', overflowY: 'auto', fontSize: '.68rem', lineHeight: '1.7', maxHeight: '500px', padding: '12px 14px', background: 'var(--ink3)' }}>

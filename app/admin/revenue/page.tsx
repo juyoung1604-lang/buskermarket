@@ -243,7 +243,7 @@ const RevenuePage = () => {
 
   return (
     <div className="space-y-6">
-      <div className="kpi-row" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
+      <div className="kpi-row">
         <div className="kpi" style={{ '--kc': 'var(--sky)' } as React.CSSProperties}>
           <div className="kpi-l">이번 달 수입</div>
           <div className="kpi-v">{(monthlyRev / 10000).toFixed(1)}만</div>
@@ -266,7 +266,7 @@ const RevenuePage = () => {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr', gap: '14px' }}>
+      <div className="revenue-grid">
         <div className="card">
           <div className="card-h"><span className="card-title">매출 요약 (월별)</span></div>
           <div className="card-body">
