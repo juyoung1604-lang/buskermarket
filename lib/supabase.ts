@@ -27,35 +27,92 @@ const DEFAULT_SETTINGS = {
   deposit_account: '110-123-456789'
 };
 
-const normalizeAdminProfiles = (profiles: any[] = []) => {
-  // 마스터관리자 고정 계정 (항상 목록에 포함, 역할 고정)
-  const masterAdminProfile = {
+const FIXED_ADMIN_PROFILES = [
+  {
     id: 'master-admin',
     name: '마스터관리자',
     email: 'doll25@naver.com',
     password: '@1234',
     role: 'master_admin',
     status: 'active',
-    last_login: new Date().toISOString(),
-    created_at: '2024-01-01'
-  };
+    created_at: '2024-01-01',
+  },
+  {
+    id: 'super-admin',
+    name: '슈퍼관리자',
+    email: 'super@songdo.com',
+    password: 'super1234',
+    role: 'super_admin',
+    status: 'active',
+    created_at: '2024-01-02',
+  },
+  {
+    id: 'admin-sample',
+    name: '관리자',
+    email: 'admin@songdo.com',
+    password: 'admin1234',
+    role: 'admin',
+    status: 'active',
+    created_at: '2024-01-03',
+  },
+  {
+    id: 'operator-sample',
+    name: '운영자',
+    email: 'ops1@songdo.com',
+    password: 'ops1234',
+    role: 'operator',
+    status: 'active',
+    created_at: '2024-01-04',
+  }
+];
 
-  // profiles에 마스터관리자가 없으면 맨 앞에 추가
-  const hasMasterAdmin = profiles.some(
-    (p: any) => String(p.email || '').trim().toLowerCase() === 'doll25@naver.com' || p.id === 'master-admin'
-  );
-  const base = hasMasterAdmin ? profiles : [masterAdminProfile, ...profiles];
+const normalizeAdminProfiles = (profiles: any[] = []) => {
+  const profileMap = new Map<string, any>();
 
-  return base.map((profile: any) => {
+  profiles.forEach((profile: any) => {
     const normalizedEmail = String(profile?.email || '').trim().toLowerCase();
-    // 마스터관리자 계정은 항상 master_admin 역할 고정 (외부에서 변경 불가)
-    if (normalizedEmail === 'doll25@naver.com' || profile.id === 'master-admin') {
+    const key = String(profile?.id || normalizedEmail);
+    if (!key) return;
+    profileMap.set(key, profile);
+    if (normalizedEmail) profileMap.set(normalizedEmail, profile);
+  });
+
+  FIXED_ADMIN_PROFILES.forEach((fixedProfile) => {
+    const normalizedEmail = fixedProfile.email.trim().toLowerCase();
+    const existingProfile =
+      profileMap.get(fixedProfile.id) ||
+      profileMap.get(normalizedEmail);
+
+    const mergedProfile = {
+      ...existingProfile,
+      ...fixedProfile,
+      email: normalizedEmail,
+      last_login: existingProfile?.last_login || new Date().toISOString(),
+    };
+
+    profileMap.set(fixedProfile.id, mergedProfile);
+    profileMap.set(normalizedEmail, mergedProfile);
+  });
+
+  const dedupedProfiles = Array.from(profileMap.values()).filter(
+    (profile: any, index: number, arr: any[]) =>
+      arr.findIndex((item: any) => String(item?.id || '').trim() === String(profile?.id || '').trim()) === index
+  );
+
+  return dedupedProfiles.map((profile: any) => {
+    const normalizedEmail = String(profile?.email || '').trim().toLowerCase();
+    const fixedProfile = FIXED_ADMIN_PROFILES.find(
+      (item) => item.id === profile.id || item.email === normalizedEmail
+    );
+
+    if (fixedProfile) {
       return {
         ...profile,
-        id: 'master-admin',
-        name: profile.name || '마스터관리자',
-        password: '@1234',
-        role: 'master_admin',
+        ...fixedProfile,
+        email: fixedProfile.email.trim().toLowerCase(),
+        name: profile.name || fixedProfile.name,
+        password: fixedProfile.password,
+        role: fixedProfile.role,
         status: 'active',
       };
     }
