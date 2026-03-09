@@ -128,7 +128,6 @@ const ImageSettingItem = ({ item, images, onUpdate, onUpdateLayout, onReset }: a
 export default function SettingsManager({ mode = 'all' }: { mode?: SettingsViewMode }) {
   const { toast } = useToast();
   const { can } = useAdmin();
-  const imagePanelRef = useRef<HTMLDivElement | null>(null);
   
   const [sysSettings, setSysSettings] = useState({
     busker_deposit: 50000,
@@ -336,7 +335,6 @@ export default function SettingsManager({ mode = 'all' }: { mode?: SettingsViewM
             <div className="card-h"><span className="card-title">홈페이지 이미지 관리</span></div>
             <div className="card-body" style={{ padding: 0 }}>
               <div
-                ref={imagePanelRef}
                 className="space-y-6"
                 style={{ maxHeight: mode === 'images' ? 'none' : '620px', overflowY: 'auto', padding: '20px' }}
               >
