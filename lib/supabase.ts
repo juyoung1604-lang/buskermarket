@@ -30,6 +30,7 @@ const CACHE_PREFIX = 'songdo_cache_';
 const LOCAL_DATA_KEY = 'songdo_local_data';
 const APP_SETTINGS_KEY = 'songdo_app_settings';
 const APP_SETTINGS_TABLE = 'app_settings';
+const APP_SETTINGS_FALLBACK_TABLE = 'admin_logs';
 
 const APP_SETTING_NAMES = {
   system: 'system_settings',
@@ -411,17 +412,70 @@ export const DB = {
   async saveRemoteAppSetting(name: string, value: any) {
     if (!this.isConfigured()) return { error: null };
     try {
-      return await supabase.from(APP_SETTINGS_TABLE).upsert([
+      const result = await supabase.from(APP_SETTINGS_TABLE).upsert([
         {
           key: name,
           value,
           updated_at: new Date().toISOString(),
         }
       ], { onConflict: 'key' });
-    } catch (error: any) {
-      if (!isMissingTableError(error, APP_SETTINGS_TABLE)) {
-        console.error('Remote save error:', error);
+
+      // Supabase returns errors in the result object (does not throw).
+      // If app_settings table is missing, fall back to admin_logs.
+      if (result.error) {
+        if (isMissingTableError(result.error, APP_SETTINGS_TABLE)) {
+          return await this.saveFallbackRemoteSetting(name, value);
+        }
+        console.error('Remote save error:', result.error);
       }
+      return result;
+    } catch (error: any) {
+      if (isMissingTableError(error, APP_SETTINGS_TABLE)) {
+        return await this.saveFallbackRemoteSetting(name, value);
+      }
+      console.error('Remote save error:', error);
+      return { error };
+    }
+  },
+
+  getFallbackSettingId(name: string) {
+    return `setting:${name}`;
+  },
+
+  async getFallbackRemoteSetting(name: string, fallback: any = null) {
+    if (!this.isConfigured()) return fallback;
+    try {
+      const { data, error } = await (supabase as any)
+        .from(APP_SETTINGS_FALLBACK_TABLE)
+        .select('desc')
+        .eq('id', this.getFallbackSettingId(name))
+        .maybeSingle();
+      if (error) return fallback;
+      const raw = (data as { desc?: string } | null)?.desc;
+      if (!raw) return fallback;
+      return JSON.parse(raw);
+    } catch {
+      return fallback;
+    }
+  },
+
+  async saveFallbackRemoteSetting(name: string, value: any) {
+    if (!this.isConfigured()) return { error: null };
+    try {
+      return await (supabase as any).from(APP_SETTINGS_FALLBACK_TABLE).upsert(
+        [
+          {
+            id: this.getFallbackSettingId(name),
+            type: 'system_setting',
+            color: 'var(--jade)',
+            title: `setting:${name}`,
+            desc: JSON.stringify(value),
+            created_at: new Date().toISOString(),
+          },
+        ],
+        { onConflict: 'id' }
+      );
+    } catch (error: any) {
       return { error };
     }
   },
@@ -511,9 +565,21 @@ export const DB = {
           this.setLocalData('faqs', data);
           return data;
         }
-        if (error) throw error;
-      } catch (e) { console.error(e); }
-      return local || [];
+        if (isMissingTableError(error, 'faqs')) {
+          const fallback = await this.getFallbackRemoteSetting('faqs', local);
+          const normalizedFallback = (fallback && fallback.length > 0) ? fallback : MOCK_DATA.faqs;
+          this.setLocalData('faqs', normalizedFallback);
+          return normalizedFallback;
+        }
+        if (error && !isMissingTableError(error, 'faqs') && error.message) {
+          console.error('Supabase getFaqs error:', error.message);
+        }
+      } catch (e: any) {
+        if (e?.message && !isMissingTableError(e, 'faqs')) {
+          console.error('Supabase getFaqs error:', e.message);
+        }
+      }
+      return (local && local.length > 0) ? local : MOCK_DATA.faqs;
     }
     return (local && local.length > 0) ? local : MOCK_DATA.faqs;
   },
@@ -524,6 +590,11 @@ export const DB = {
 
     if (this.isConfigured()) {
       const result = await supabase.from('faqs').update(payload).eq('id', id);
+      if (isMissingTableError(result.error, 'faqs')) {
+        const fallbackResult = await this.saveFallbackRemoteSetting('faqs', updated);
+        if (!fallbackResult.error) this.setLocalData('faqs', updated);
+        return fallbackResult;
+      }
       if (!result.error) this.setLocalData('faqs', updated);
       return result;
     }
@@ -542,6 +613,12 @@ export const DB = {
           order_seq: payload?.order_seq || list.length + 1,
         },
       ]);
+      if (isMissingTableError(result.error, 'faqs')) {
+        const updated = [...list, newItem];
+        const fallbackResult = await this.saveFallbackRemoteSetting('faqs', updated);
+        if (!fallbackResult.error) this.setLocalData('faqs', updated);
+        return fallbackResult;
+      }
       if (!result.error) {
         const refreshed = await this.getFaqs();
         this.setLocalData('faqs', refreshed);
@@ -554,14 +631,20 @@ export const DB = {
 
   async deleteFaq(id: string) {
     const list = this.getStoredLocalData('faqs') || [];
+    const updated = list.filter((f: any) => f.id !== id);
     if (this.isConfigured()) {
       const result = await supabase.from('faqs').delete().eq('id', id);
+      if (isMissingTableError(result.error, 'faqs')) {
+        const fallbackResult = await this.saveFallbackRemoteSetting('faqs', updated);
+        if (!fallbackResult.error) this.setLocalData('faqs', updated);
+        return fallbackResult;
+      }
       if (!result.error) {
-        this.setLocalData('faqs', list.filter((f: any) => f.id !== id));
+        this.setLocalData('faqs', updated);
       }
       return result;
     }
-    this.setLocalData('faqs', list.filter((f: any) => f.id !== id));
+    this.setLocalData('faqs', updated);
     return { error: null };
   },
 
@@ -575,6 +658,11 @@ export const DB = {
     if (this.isConfigured()) {
       for (const item of reordered) {
         const result = await supabase.from('faqs').update({ order_seq: item.order_seq }).eq('id', item.id);
+        if (isMissingTableError(result.error, 'faqs')) {
+          const fallbackResult = await this.saveFallbackRemoteSetting('faqs', reordered);
+          if (!fallbackResult.error) this.setLocalData('faqs', reordered);
+          return { success: !fallbackResult.error, error: fallbackResult.error || null };
+        }
         if (result.error) return { success: false, error: result.error };
       }
       this.setLocalData('faqs', reordered);
