@@ -1455,6 +1455,7 @@ export const DB = {
 
   // IMAGES
   async getImages() {
+    // 이미지의 경우 즉시 반영이 중요하므로 30분 캐시를 건너뜁니다.
     const local = this.getStoredLocalData('images');
     if (this.isConfigured()) {
       try {
@@ -1465,7 +1466,6 @@ export const DB = {
         }
       } catch (e) { console.error(e); }
     }
-    if (this.isConfigured()) return local || [];
     return (local && local.length > 0) ? local : this.getLocalData('images');
   },
 
