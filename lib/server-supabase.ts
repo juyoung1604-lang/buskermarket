@@ -32,14 +32,20 @@ const isMissingTableError = (error: any, table: string) => {
   );
 };
 
+// Module-level cache: once a valid Supabase config is used, keep it for the lifetime
+// of this server process (helps with warm serverless invocations and VPS deployments).
+let _cachedConfig: { url: string; key: string } | null = null;
+
 const resolveServerSupabaseClient = (config?: ServerSupabaseConfig) => {
   if (serverSupabase) return serverSupabase;
 
-  const fallbackUrl = String(config?.url || '').trim();
-  const fallbackKey = String(config?.key || '').trim();
+  const url = String(config?.url || _cachedConfig?.url || '').trim();
+  const key = String(config?.key || _cachedConfig?.key || '').trim();
 
-  if (!fallbackUrl || !fallbackKey) return null;
-  return createClient(fallbackUrl, fallbackKey);
+  if (!url || !key) return null;
+
+  if (!_cachedConfig) _cachedConfig = { url, key };
+  return createClient(url, key);
 };
 
 const getFallbackSettingId = (name: string) => `setting:${name}`;

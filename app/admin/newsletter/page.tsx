@@ -28,6 +28,7 @@ const NewsletterPage = () => {
     appPassword: '',
     isConnected: false
   });
+  const [gmailSource, setGmailSource] = useState<'env' | 'supabase' | null>(null);
 
   // Compose State
   const [compose, setCompose] = useState({
@@ -56,6 +57,7 @@ const NewsletterPage = () => {
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || 'Gmail 설정 조회 실패');
       setGmailConfig(result.config || { email: '', appPassword: '', isConnected: false });
+      setGmailSource(result.source || null);
     } catch (error: any) {
       toast('Gmail 설정 조회 실패: ' + error.message, 'rose');
     }
@@ -264,28 +266,42 @@ const NewsletterPage = () => {
         <div className="nl-gmail card">
             <div className="card-h">
               <span className="card-title">Gmail 연동 설정</span>
-              {gmailConfig.isConnected && <span className="badge b-approved">연결됨</span>}
+              {gmailConfig.isConnected && gmailSource === 'env'
+                ? <span className="badge b-approved">환경변수 고정</span>
+                : gmailConfig.isConnected && <span className="badge b-approved">연결됨</span>}
             </div>
             <div className="card-body">
-              {canManageGmail ? (
+              {gmailSource === 'env' ? (
+                <div className="space-y-3">
+                  <div style={{ padding: '12px', background: 'var(--ink3)', borderRadius: '8px', border: '1px solid var(--jade)' }}>
+                    <div style={{ fontSize: '.7rem', color: 'var(--jade)', marginBottom: '4px' }}>
+                      <i className="fa-solid fa-lock" style={{ marginRight: '4px' }}></i>환경변수로 고정된 계정
+                    </div>
+                    <div style={{ fontWeight: 700, color: 'var(--text)' }}>{gmailConfig.email}</div>
+                  </div>
+                  <p style={{ fontSize: '.65rem', color: 'var(--muted)' }}>
+                    * 서버 환경변수 <code>GMAIL_USER</code> / <code>GMAIL_APP_PASSWORD</code>로 설정되어 재배포 후에도 유지됩니다.
+                  </p>
+                </div>
+              ) : canManageGmail ? (
                 !gmailConfig.isConnected ? (
                 <form onSubmit={handleGmailConnect} className="space-y-3">
                   <div className="fg">
                     <label>발송 Gmail 주소</label>
-                    <input 
-                      className="fi" 
-                      type="email" 
-                      placeholder="example@gmail.com" 
+                    <input
+                      className="fi"
+                      type="email"
+                      placeholder="example@gmail.com"
                       value={gmailConfig.email}
                       onChange={(e) => setGmailConfig({...gmailConfig, email: e.target.value})}
                     />
                   </div>
                   <div className="fg">
                     <label>Gmail 앱 비밀번호</label>
-                    <input 
-                      className="fi" 
-                      type="password" 
-                      placeholder="16자리 앱 비밀번호" 
+                    <input
+                      className="fi"
+                      type="password"
+                      placeholder="16자리 앱 비밀번호"
                       value={gmailConfig.appPassword}
                       onChange={(e) => setGmailConfig({...gmailConfig, appPassword: e.target.value})}
                     />

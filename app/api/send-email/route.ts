@@ -6,16 +6,24 @@ import { getServerAppSetting } from '@/lib/server-supabase';
 export async function POST(request: Request) {
   try {
     const { recipients, subject, content, supabaseUrl, supabaseKey } = await request.json();
-    const gmailConfig = await getServerAppSetting('gmail_config', {
-      email: '',
-      appPassword: '',
-      isConnected: false,
-    }, {
-      url: String(supabaseUrl || '').trim(),
-      key: String(supabaseKey || '').trim(),
-    });
-    const gmailUser = gmailConfig?.email || '';
-    const gmailPass = gmailConfig?.appPassword || '';
+
+    // Env vars take priority — persistent across all deployments
+    let gmailUser = process.env.GMAIL_USER || '';
+    let gmailPass = process.env.GMAIL_APP_PASSWORD || '';
+
+    // Fall back to Supabase-stored config if env vars not set
+    if (!gmailUser || !gmailPass) {
+      const gmailConfig = await getServerAppSetting('gmail_config', {
+        email: '',
+        appPassword: '',
+        isConnected: false,
+      }, {
+        url: String(supabaseUrl || '').trim(),
+        key: String(supabaseKey || '').trim(),
+      });
+      gmailUser = gmailUser || gmailConfig?.email || '';
+      gmailPass = gmailPass || gmailConfig?.appPassword || '';
+    }
 
     if (!gmailUser || !gmailPass || !recipients || !subject || !content) {
       return NextResponse.json({ error: '필수 정보가 누락되었습니다.' }, { status: 400 });

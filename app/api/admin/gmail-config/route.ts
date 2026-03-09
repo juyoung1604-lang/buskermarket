@@ -20,9 +20,23 @@ const getSupabaseConfigFromBody = (body: any) => ({
   key: String(body?.supabaseKey || '').trim(),
 });
 
+const getEnvGmailConfig = () => {
+  const email = process.env.GMAIL_USER || '';
+  const appPassword = process.env.GMAIL_APP_PASSWORD || '';
+  if (email && appPassword) {
+    return { email, appPassword, isConnected: true };
+  }
+  return null;
+};
+
 export async function GET(request: Request) {
+  // Server env vars take priority — persist permanently without Supabase
+  const envConfig = getEnvGmailConfig();
+  if (envConfig) {
+    return NextResponse.json({ config: envConfig, source: 'env' });
+  }
   const config = await getServerAppSetting('gmail_config', DEFAULT_GMAIL_CONFIG, getSupabaseConfigFromUrl(request));
-  return NextResponse.json({ config });
+  return NextResponse.json({ config, source: 'supabase' });
 }
 
 export async function POST(request: Request) {
@@ -42,7 +56,7 @@ export async function POST(request: Request) {
     const result = await saveServerAppSetting('gmail_config', config, supabaseConfig);
     if ((result as any)?.error) {
       return NextResponse.json(
-        { error: (result as any).error.message || 'Gmail 설정 저장에 실패했습니다.' },
+        { error: (result as any).error.message || 'Gmail 설정 저장에 실패했습니다. (Supabase 연결을 확인하거나 GMAIL_USER/GMAIL_APP_PASSWORD 환경변수를 설정하세요.)' },
         { status: 500 }
       );
     }
