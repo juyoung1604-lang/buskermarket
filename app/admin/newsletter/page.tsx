@@ -41,9 +41,18 @@ const NewsletterPage = () => {
     fetchGmailConfig();
   }, []);
 
+  const getSupabaseConfigPayload = () => {
+    const config = DB.getConnectionConfig();
+    return {
+      supabaseUrl: config?.url || '',
+      supabaseKey: config?.key || '',
+    };
+  };
+
   const fetchGmailConfig = async () => {
     try {
-      const response = await fetch('/api/admin/gmail-config', { cache: 'no-store' });
+      const params = new URLSearchParams(getSupabaseConfigPayload());
+      const response = await fetch(`/api/admin/gmail-config?${params.toString()}`, { cache: 'no-store' });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || 'Gmail 설정 조회 실패');
       setGmailConfig(result.config || { email: '', appPassword: '', isConnected: false });
@@ -106,7 +115,10 @@ const NewsletterPage = () => {
     const response = await fetch('/api/admin/gmail-config', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(newConfig),
+      body: JSON.stringify({
+        ...newConfig,
+        ...getSupabaseConfigPayload(),
+      }),
     });
     const result = await response.json();
     if (!response.ok) {
@@ -122,7 +134,11 @@ const NewsletterPage = () => {
       toast('Gmail 연동 설정은 마스터관리자만 변경할 수 있습니다.', 'rose');
       return;
     }
-    const response = await fetch('/api/admin/gmail-config', { method: 'DELETE' });
+    const response = await fetch('/api/admin/gmail-config', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(getSupabaseConfigPayload()),
+    });
     const result = await response.json();
     if (!response.ok) {
       toast('Gmail 설정 해제 실패: ' + (result.error || 'unknown error'), 'rose');
@@ -214,7 +230,8 @@ const NewsletterPage = () => {
         body: JSON.stringify({
           recipients: recipients,
           subject: compose.subject,
-          content: compose.content
+          content: compose.content,
+          ...getSupabaseConfigPayload(),
         }),
       });
 

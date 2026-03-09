@@ -12,10 +12,30 @@ export const serverSupabase =
 
 export const APP_SETTINGS_TABLE = 'app_settings';
 
-export async function getServerAppSetting<T>(name: string, fallback: T): Promise<T> {
-  if (!serverSupabase) return fallback;
+type ServerSupabaseConfig = {
+  url?: string;
+  key?: string;
+};
+
+const resolveServerSupabaseClient = (config?: ServerSupabaseConfig) => {
+  if (serverSupabase) return serverSupabase;
+
+  const fallbackUrl = String(config?.url || '').trim();
+  const fallbackKey = String(config?.key || '').trim();
+
+  if (!fallbackUrl || !fallbackKey) return null;
+  return createClient(fallbackUrl, fallbackKey);
+};
+
+export async function getServerAppSetting<T>(
+  name: string,
+  fallback: T,
+  config?: ServerSupabaseConfig
+): Promise<T> {
+  const client = resolveServerSupabaseClient(config);
+  if (!client) return fallback;
   try {
-    const { data, error } = await serverSupabase
+    const { data, error } = await client
       .from(APP_SETTINGS_TABLE)
       .select('value')
       .eq('key', name)
@@ -31,13 +51,14 @@ export async function getServerAppSetting<T>(name: string, fallback: T): Promise
   }
 }
 
-export async function saveServerAppSetting(name: string, value: any) {
-  if (!serverSupabase) {
+export async function saveServerAppSetting(name: string, value: any, config?: ServerSupabaseConfig) {
+  const client = resolveServerSupabaseClient(config);
+  if (!client) {
     return { error: { message: 'Server Supabase client is not configured.' } };
   }
 
   try {
-    return await serverSupabase.from(APP_SETTINGS_TABLE).upsert(
+    return await client.from(APP_SETTINGS_TABLE).upsert(
       [
         {
           key: name,

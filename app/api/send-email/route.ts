@@ -5,11 +5,14 @@ import { getServerAppSetting } from '@/lib/server-supabase';
 
 export async function POST(request: Request) {
   try {
-    const { recipients, subject, content } = await request.json();
+    const { recipients, subject, content, supabaseUrl, supabaseKey } = await request.json();
     const gmailConfig = await getServerAppSetting('gmail_config', {
       email: '',
       appPassword: '',
       isConnected: false,
+    }, {
+      url: String(supabaseUrl || '').trim(),
+      key: String(supabaseKey || '').trim(),
     });
     const gmailUser = gmailConfig?.email || '';
     const gmailPass = gmailConfig?.appPassword || '';
